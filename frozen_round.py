@@ -1,15 +1,17 @@
 """A scored round's frozen registration, written once before any paid call and verified before every run
 and every scoring.
 
-`manifest.json` in the round folder records: the registered case ids; the sha256 of every source file in
+The round's question file, sampler, library commit, Python version and case ids are registered in code
+(`registered_rounds.py`). `manifest.json` in the round folder, whose hash `FROZEN.txt` binds, records: the
+registered case ids; the sha256 of every source file in
 this repository at a clean commit; the exact question file and its hash; the cases file hash; the
 jev-navigator commit and the Python version the run must use; the gitleaks receipt with its version,
 command and input hash (no findings allowed); the prior-label manifest hash; the frozen copy of the rule
 (`compose.py` copied to `<round>/compose_frozen.py`) that the scorer uses instead of the live one; and the
 verifier report the freeze answers. `verify` fails closed on any difference, and also rebuilds every case
 record in full with the round's sampler.
-usage: uv run python frozen_round.py freeze <round dir> <sampler module> <question file> <verifier report>
-       uv run python frozen_round.py verify <round dir>
+usage: uv run python frozen_round.py freeze <round name> <verifier report>
+       uv run python frozen_round.py verify <round name>
 """
 
 import hashlib
@@ -25,6 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from data_root import DATA
+from registered_rounds import ROUNDS, Registration
 
 REPOSITORY = Path(__file__).resolve().parent
 SOURCE_SUFFIXES = (".py", ".mjs", ".json", ".toml")
@@ -33,22 +36,31 @@ GITLEAKS_RECEIPT = "secret-scan.gitleaks.json"
 PRIOR_LABELS = "prior-labels.json"
 
 
+MANIFEST_LINE = "manifest.json sha256: "
+"""The line in `FROZEN.txt` that binds the manifest; `freeze` writes it."""
+
+
 class FrozenRoundError(RuntimeError):
     """The round's files, code or runtime differ from its registration."""
+
+
+class RunNotCompleteError(FrozenRoundError):
+    """The run's result file is missing, or a newer run is still writing its partial file."""
 
 
 @dataclass(frozen=True)
 class Manifest:
     round_dir: Path
     fields: dict
+    registration: Registration
 
     @property
     def case_ids(self) -> list[str]:
-        return self.fields["case_ids"]
+        return list(self.registration.case_ids)
 
     @property
     def questions_path(self) -> Path:
-        return REPOSITORY / self.fields["questions"]["path"]
+        return REPOSITORY / self.registration.questions
 
     def questions(self) -> dict:
         return json.loads(self.questions_path.read_text())
@@ -56,6 +68,13 @@ class Manifest:
 
 def sha256_of(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def completed_rows(round_dir: Path, name: str, case_ids: list[str]) -> dict[str, dict]:
+    """`rows_exactly` for a finished run only: refused while `<name>.partial` exists or when `<name>` is missing."""
+    if (round_dir / f"{name}.partial").exists() or not (round_dir / name).exists():
+        raise RunNotCompleteError(f"{round_dir.name}/{name}: the run is not complete")
+    return rows_exactly(round_dir / name, case_ids)
 
 
 def rows_exactly(path: Path, case_ids: list[str]) -> dict[str, dict]:
@@ -85,17 +104,18 @@ def python_version() -> str:
     return ".".join(platform.python_version_tuple()[:2])
 
 
-def freeze(round_dir: Path, sampler: str, questions: str, verifier_report: Path) -> Manifest:
+def freeze(round_dir: Path, verifier_report: Path) -> Manifest:
     _require_clean_repository()
+    registration = ROUNDS[round_dir.name]
     cases = round_dir / "cases.jsonl"
     shutil.copyfile(REPOSITORY / "compose.py", round_dir / FROZEN_RULE)
     fields = {
-        "case_ids": [json.loads(line)["case_id"] for line in cases.read_text().splitlines()],
+        "case_ids": list(registration.case_ids),
         "repository_commit": _git("rev-parse", "HEAD"),
         "sources": source_hashes(),
-        "questions": {"path": questions, "sha256": sha256_of(REPOSITORY / questions)},
+        "questions": {"path": registration.questions, "sha256": sha256_of(REPOSITORY / registration.questions)},
         "cases_sha256": sha256_of(cases),
-        "sampler": sampler,
+        "sampler": registration.sampler,
         "library_commit": library_commit(),
         "python": python_version(),
         "gitleaks": _secret_scan(round_dir, cases),
@@ -104,13 +124,30 @@ def freeze(round_dir: Path, sampler: str, questions: str, verifier_report: Path)
         "verifier_report": {"path": str(verifier_report), "sha256": sha256_of(verifier_report)},
     }
     (round_dir / "manifest.json").write_text(json.dumps(fields, indent=1) + "\n")
+    _bind_manifest(round_dir)
     return verify(round_dir)
+
+
+def registered_manifest(round_dir: Path, registration: Registration) -> Manifest:
+    """The manifest, only when its hash is the one `FROZEN.txt` binds and it agrees with the code registration."""
+    bound = [line.removeprefix(MANIFEST_LINE) for line in (round_dir / "FROZEN.txt").read_text().splitlines()
+             if line.startswith(MANIFEST_LINE)]
+    _same("manifest (bound in FROZEN.txt)", [sha256_of(round_dir / "manifest.json")], bound)
+    fields = json.loads((round_dir / "manifest.json").read_text())
+    _same("case ids", fields["case_ids"], list(registration.case_ids))
+    _same("question file", fields["questions"]["path"], registration.questions)
+    _same("sampler", fields["sampler"], registration.sampler)
+    _same("registered library commit", fields["library_commit"], registration.library_commit)
+    _same("registered python", fields["python"], registration.python)
+    return Manifest(round_dir, fields, registration)
 
 
 def verify(round_dir: Path) -> Manifest:
     """The round's manifest, after every registered fact was checked again; raises on any difference."""
-    manifest = Manifest(round_dir, json.loads((round_dir / "manifest.json").read_text()))
+    manifest = registered_manifest(round_dir, ROUNDS[round_dir.name])
     fields = manifest.fields
+    _same("repository commit (run and score from a checkout at the registered commit)", _git("rev-parse", "HEAD"),
+          fields["repository_commit"])
     _same("sources (run and score from a checkout at the registered repository commit)", source_hashes(), fields["sources"])
     _same("questions", sha256_of(manifest.questions_path), fields["questions"]["sha256"])
     _same("cases", sha256_of(round_dir / "cases.jsonl"), fields["cases_sha256"])
@@ -136,7 +173,7 @@ def frozen_rule(manifest: Manifest):
 
 
 def _same_case_records(round_dir: Path, manifest: Manifest) -> None:
-    sampler = importlib.import_module(manifest.fields["sampler"])
+    sampler = importlib.import_module(manifest.registration.sampler)
     cases = rows_exactly(round_dir / "cases.jsonl", manifest.case_ids)
     differing = [cid for cid, raw in cases.items() if sampler.rebuilt_case(raw) != raw]
     if differing:
@@ -146,6 +183,12 @@ def _same_case_records(round_dir: Path, manifest: Manifest) -> None:
 def _same(what: str, found, registered) -> None:
     if found != registered:
         raise FrozenRoundError(f"{what} differs from the registration")
+
+
+def _bind_manifest(round_dir: Path) -> None:
+    frozen = round_dir / "FROZEN.txt"
+    kept = [line for line in frozen.read_text().splitlines() if not line.startswith(MANIFEST_LINE)] if frozen.exists() else []
+    frozen.write_text("\n".join([*kept, MANIFEST_LINE + sha256_of(round_dir / "manifest.json")]) + "\n")
 
 
 def _secret_scan(round_dir: Path, cases: Path) -> dict:
@@ -169,7 +212,7 @@ def _git(*arguments: str) -> str:
 
 def main() -> None:
     action, round_dir = sys.argv[1], DATA / sys.argv[2]
-    manifest = freeze(round_dir, *sys.argv[3:5], Path(sys.argv[5])) if action == "freeze" else verify(round_dir)
+    manifest = freeze(round_dir, Path(sys.argv[3])) if action == "freeze" else verify(round_dir)
     print(f"{round_dir.name}: {len(manifest.case_ids)} cases verified against the registration "
           f"(library {manifest.fields['library_commit'][:8]}, Python {manifest.fields['python']})")
 
