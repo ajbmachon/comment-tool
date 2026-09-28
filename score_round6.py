@@ -1,61 +1,62 @@
 """Pre-registered scoring for round 6, frozen before any Jev or Sol call on its 30 comments.
 
-Round 6 measures the whole tool as an agent calls it (`classify.py --diff`): comments recent merged pull
-requests touched, inline and doc mixed as drawn. It folds in item 9: the parts are measured together.
+What round 6 measures: whether the tool, run as an agent calls it (`classify.py --diff`), reproduces Sol's
+judgments through rule A on 30 fresh model-reviewable comments that recent pull requests touched (23 doc
+comments and 7 block comments, as drawn). Rule A itself was approved separately; the round does not test
+whether rule A is the right policy. List claims are not part of this round.
 
-Answer key: the current rule (`compose`) applied to Sol's blind labels on the exact first packet (true 1,
-false 0, ambiguous 0.5), with the comment's code facts. For a comment whose list check ran, the key's
-action is "fix stale comment" when `compose.list_claim` on Sol's list labels fails, and rule A's otherwise.
+Before scoring, `frozen_round.verify` checks the registration again, and the rows must be exactly the 30
+registered ids in the cases, the result and the Sol labels, with no duplicate, gap or extra; a partial run
+is invalid, never a smaller round. Each result row is proven from the journal by `row_audit.audit_row`
+(first request state, request hashes, answers, and the action, decision path, escalation and
+`decided_by` recomputed with the frozen rule). Each Sol label must name the hash of the exact packet and
+questions it was given. A list claim anywhere fails the scoring.
 
-Bars, on the tool's final row (after the definition fetch, the gated search, the stale bar and the list
-check): at least 70 of 100 decided, and at least 90 of 100 of those matching the key. A row the tool
-escalates is not decided, whatever its reason; that includes a "fix stale comment" sent to the caller by
-the provisional 0.80 bar, exactly as in the docs2 figure it is compared with.
+Answer key: the frozen rule (`round6/compose_frozen.py`, hash-pinned) applied to Sol's labels on the exact
+first packet (true 1, false 0, ambiguous 0.5), with the case's code facts.
 
-Beside the bars, and not counted towards them:
-- the same bars on the first answer, comparable with docs2 (19 of 30 decided under the 0.80 bar);
-- inline and doc comments separately;
-- each part: how often it ran, and where labels allow, how often it was right (definition fetches,
-  searches under the gate, list checks, stale-bar escalations, band escalations by reason, staleness
-  not checked, rewrite jobs);
-- agreement of each yes/no answer with Sol at 0.5, ambiguous labels left out.
-usage: python3 score_round6.py
+Bars, on the tool's final row (after the definition fetch, the gated search and the stale bar): at least
+70 of 100 decided, and at least 90 of 100 of those matching the key. An escalated row is not decided,
+whatever its reason, including a "fix stale comment" sent to the caller by the provisional 0.80 bar, as in
+the docs2 figure it is compared with.
+
+Beside the bars, and not counted towards them: the same on the first answer (comparable with docs2), doc
+and block comments separately, each part's count (definition fetches, searches, stale-bar and band
+escalations by reason, staleness not checked, rewrite jobs), and each question's agreement with Sol.
+usage: uv run python score_round6.py      (from a checkout at the round's registered repository commit)
 """
 
 from collections import Counter
 
-import compose
 import score_round4 as shared
 from data_root import DATA
+from frozen_round import FrozenRoundError, Manifest, frozen_rule, rows_exactly, verify
+from row_audit import audit_row, journal_exchanges
+from sol_labels import request_sha256 as sol_request_sha256
 
 ROUND = DATA / "round6"
 BAR_REASON = "fix stale below bar"
 
 
-def key_action(case: dict, label: dict, list_label: dict | None) -> str:
-    facts = case["code_facts"]
-    if list_label is not None and _list_key(case, list_label).fails:
-        return "fix_stale"
-    return compose.readout_a(shared.sol_probabilities(label), facts)
-
-
-def _list_key(case: dict, list_label: dict) -> compose.ListClaim:
-    entries = {item["code"]: shared.SOL_TRUTH[answer["label"]]
-               for item, answer in zip(case["items"], list_label["verdict"]["entries"], strict=True)}
-    return compose.list_claim(shared.SOL_TRUTH[list_label["verdict"]["A"]["label"]], entries)
-
-
-def final_result(passes: dict, keys: dict) -> dict:
-    return {cid: {"a": row["action"], "escalated": "escalate" in row, "key": keys[cid]} for cid, row in passes.items()}
+def verified_inputs(manifest: Manifest, rule) -> tuple[dict, dict, dict]:
+    cases, passes, labels = (rows_exactly(ROUND / name, manifest.case_ids) for name in ("cases.jsonl", "pass.jsonl", "sol-labels.jsonl"))
+    if any("items" in case for case in cases.values()) or any("list_claim" in row for row in passes.values()):
+        raise FrozenRoundError("a list claim is in round 6; list claims are not part of this round")
+    exchanges = journal_exchanges(ROUND / "journal.jsonl")
+    for case_id, row in passes.items():
+        audit_row(row, cases[case_id], exchanges, rule)
+    questions = manifest.questions()
+    for case_id, label in labels.items():
+        if "verdict" not in label or label["request_sha256"] != sol_request_sha256(cases[case_id]["state"], questions):
+            raise FrozenRoundError(f"{case_id}: Sol label missing, failed or given another packet")
+    return cases, passes, labels
 
 
 def part_lines(passes: dict, keys: dict) -> list[str]:
-    reasons = Counter(reason.split(" ")[0] if not reason.startswith(BAR_REASON) else BAR_REASON
+    reasons = Counter(BAR_REASON if reason.startswith(BAR_REASON) else reason.split(" ")[0]
                       for row in passes.values() for reason in row.get("escalate", {}).get("reasons", []))
     fetched = {cid: row["definitions"] for cid, row in passes.items() if "definitions" in row}
     searched = {cid: row["search"]["outcome"] for cid, row in passes.items() if "search" in row}
-    listed = {cid: row["list_claim"] for cid, row in passes.items() if "list_claim" in row}
-    unchecked = [cid for cid, row in passes.items() if "stale_check" in row]
     jobs = [cid for cid, row in passes.items() if "rewrite_job" in row]
     return [
         f"escalation reasons: {dict(reasons)}",
@@ -63,16 +64,14 @@ def part_lines(passes: dict, keys: dict) -> list[str]:
          f"{sum(bool(d['unresolved'] or d.get('unknown')) for d in fetched.values())}: {sorted(fetched)}"),
         (f"searches under the gate: {len(searched)} {searched}; decided after the search: "
          f"{sorted(cid for cid, row in passes.items() if row['decided_by'] == 'jev+rule after find_code')}"),
-        (f"list checks: {len(listed)}; failing lists {sorted(cid for cid, rec in listed.items() if rec.get('failing'))}; "
-         f"key says fix_stale for {sorted(cid for cid in listed if keys[cid] == 'fix_stale')}"),
-        f"staleness not checked: {len(unchecked)} {unchecked}",
+        f"staleness not checked: {sum('stale_check' in row for row in passes.values())}",
         f"rewrite jobs: {len(jobs)}; of those the key says rewrite for {sum(keys[cid] == 'rewrite' for cid in jobs)}",
     ]
 
 
 def split_lines(cases: dict, result: dict) -> list[str]:
     lines = []
-    for name, is_doc in (("doc comments", True), ("inline and block comments", False)):
+    for name, is_doc in (("doc comments", True), ("block and inline comments", False)):
         part = {cid: r for cid, r in result.items() if cases[cid]["code_facts"]["doc_comment"] == is_doc}
         if part:
             lines.append(shared.summary(f"  {name} ({len(part)})", part))
@@ -80,12 +79,14 @@ def split_lines(cases: dict, result: dict) -> list[str]:
 
 
 def main() -> None:
-    cases, passes, labels = (shared.rows(ROUND / name) for name in ("cases.jsonl", "pass.jsonl", "sol-labels.jsonl"))
-    list_path = ROUND / "list-sol-labels.jsonl"
-    list_labels = shared.rows(list_path) if list_path.exists() else {}
-    keys = {cid: key_action(cases[cid], labels[cid], list_labels.get(cid)) for cid in passes}
-    final = final_result(passes, keys)
-    first = shared.readouts(compose, passes, labels, {cid: case["code_facts"] for cid, case in cases.items()})
+    manifest = verify(ROUND)
+    rule = frozen_rule(manifest)
+    cases, passes, labels = verified_inputs(manifest, rule)
+    facts = {cid: case["code_facts"] for cid, case in cases.items()}
+    keys = {cid: rule.readout_a(shared.sol_probabilities(labels[cid]), facts[cid]) for cid in manifest.case_ids}
+    final = {cid: {"a": row["action"], "escalated": "escalate" in row, "key": keys[cid]} for cid, row in passes.items()}
+    first = shared.readouts(rule, passes, labels, facts)
+    print("Measures: the tool reproduces Sol's judgments through rule A (rule A approved separately)")
     print(shared.summary("Final row (the bars)", final))
     print(shared.bars(final))
     print("\n".join(split_lines(cases, final)))
