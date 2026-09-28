@@ -2,7 +2,7 @@
 
 A Sol label is valid only for its exact packet, so each re-pin must rebuild the labelled
 packets from git objects and compare their JSON bytes with the stored ones.
-usage: run-slot -- uv run --project <jev-navigator> python packets_rebuild.py
+usage: uv run python packets_rebuild.py
 """
 
 import json
@@ -13,8 +13,8 @@ from comment_review import MEASURED_CONTEXT, comment_state
 from data_root import DATA
 from run_round4 import case_of, index_of
 
-LABELLED = tuple(DATA / name / "cases.jsonl" for name in ("round3-nav-described", "round4", "docs", "docs2"))
-"""The packets the current Sol labels were given: round 3's fresh labels, round 4's and both doc rounds'."""
+LABELLED = tuple(DATA / name / "cases.jsonl" for name in ("round3-nav-described", "round4", "docs", "docs2", "round6"))
+"""The packets the current Sol labels were given: round 3's fresh labels, round 4's, both doc rounds' and round 6's."""
 
 
 def packet_bytes(state: dict) -> bytes:
