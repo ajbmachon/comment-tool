@@ -10,11 +10,10 @@ usage: python3 multi_detail.py
 
 import json
 import re
-from pathlib import Path
 
+from data_root import DATA
 from extract_cases import comment_body, comment_prefix
 
-HERE = Path(__file__).resolve().parent
 CLAUSE_BREAK = re.compile(r"(?<=[.;:])\s+|\s+[—–-]{1,2}\s+")
 CHECKABLE = re.compile(
     r"\d|`[^`]+`|\b[a-z]+_[a-z0-9_]+\b|\b[a-z]+[A-Z]\w*\b|\b\w+\.\w+\b|\b\w+\(\)|\b[A-Z]{2,}[A-Z0-9_]*\b"
@@ -30,7 +29,7 @@ def detail_clauses(comment: str, path: str) -> list[str]:
 
 
 def main() -> None:
-    cases = [json.loads(line) for line in (HERE / "round4" / "cases.jsonl").read_text().splitlines()]
+    cases = [json.loads(line) for line in (DATA / "round4" / "cases.jsonl").read_text().splitlines()]
     counts = {c["case_id"]: len(detail_clauses(c["state"]["comment"]["text"], c["provenance"]["path"])) for c in cases}
     multi = sorted(cid for cid, n in counts.items() if n >= 2)
     print(f"comments naming two or more details: {len(multi)} of {len(counts)}")

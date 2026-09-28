@@ -15,10 +15,9 @@ Beside the bars, and not counted towards them:
 usage: python3 score_docs.py <round dir>
 """
 
+import sys
 from collections import Counter
 from pathlib import Path
-
-import sys
 
 import compose
 import score_round4 as shared

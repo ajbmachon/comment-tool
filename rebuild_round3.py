@@ -12,11 +12,18 @@ import json
 import sys
 from pathlib import Path
 
-from comment_review import MEASURED_CONTEXT, UNMEASURED_CONTEXT, comment_state, question_set, review_comment
+from comment_review import (
+    MEASURED_CONTEXT,
+    UNMEASURED_CONTEXT,
+    comment_state,
+    question_set,
+    review_comment,
+)
+from data_root import DATA
 from journaled_client import journaled_judge
 from run_round4 import case_of, index_of
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "round3"))
+sys.path.insert(0, str(DATA / "round3"))
 import compose_frozen  # noqa: E402  the rule round 3 was measured with
 
 HERE = Path(__file__).resolve().parent
@@ -43,7 +50,7 @@ def require_expected_states(raws: list[dict], indexes: dict, context, expected_p
 def main() -> None:
     out, context = Path(sys.argv[1]), CONTEXTS[sys.argv[2]]
     out.mkdir(parents=True, exist_ok=True)
-    raws = [json.loads(line) for line in (HERE / "round3" / "cases.jsonl").read_text().splitlines()]
+    raws = [json.loads(line) for line in (DATA / "round3" / "cases.jsonl").read_text().splitlines()]
     indexes = {raw["case_id"]: index_of(raw) for raw in raws}
     if "--expect" in sys.argv:
         require_expected_states(raws, indexes, context, Path(sys.argv[sys.argv.index("--expect") + 1]))

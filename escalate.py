@@ -8,12 +8,11 @@ usage: python3 escalate.py
 """
 
 import json
-from pathlib import Path
 
 from compare_labels import rows
-from compare_readouts import jev_answers, matches, readout_a_jev, readout_b_jev
+from compare_readouts import jev_answers, matches, readout_a_jev
+from data_root import DATA
 
-HERE = Path(__file__).resolve().parent
 VALUE = ("explains_hard_code", "states_hidden_rule", "teaches_needed_knowledge", "points_to_owner")
 
 
@@ -70,9 +69,9 @@ def score(cases, jev, facts, sol, cutoff: float) -> dict:
 
 
 def main() -> None:
-    sol = rows(str(HERE / "sol-labels.jsonl"))
+    sol = rows(str(DATA / "sol-labels.jsonl"))
     jev = jev_answers()
-    facts = {c["case_id"]: c["code_facts"] for c in map(json.loads, (HERE / "cases.jsonl").read_text().splitlines())}
+    facts = {c["case_id"]: c["code_facts"] for c in map(json.loads, (DATA / "cases.jsonl").read_text().splitlines())}
     cases = sorted(set(sol) & set(jev))
     n = len(cases)
     a_hits = sum(matches(readout_a_jev(jev[c], facts[c]), sol[c]["verdict"]["answers"]["action"]["choice"]) for c in cases)

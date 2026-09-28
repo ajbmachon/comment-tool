@@ -9,6 +9,7 @@ import hashlib
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 from extract_cases import block_span, build_case, comment_prefix, is_comment
 
@@ -46,14 +47,14 @@ def rank(*parts) -> str:
 
 
 def main() -> None:
-    used = {row.split("\t")[3] for row in open(sys.argv[1]) if row.strip()}
+    used = {row.split("\t")[3] for row in Path(sys.argv[1]).read_text().splitlines() if row.strip()}
     per_repo = int(sys.argv[2])
     for name, (repo, commit, include, exclude) in REPOS.items():
         picked = 0
         for path in sorted(files(repo, commit, include, exclude), key=lambda p: rank(name, p)):
             if path in used:
                 continue
-            for line in sorted(block_starts(repo, commit, path), key=lambda l: rank(name, path, l)):
+            for line in sorted(block_starts(repo, commit, path), key=lambda start: rank(name, path, start)):
                 case = build_case("probe", repo, commit, path, line)
                 if case["deterministic_keep"] or case["deterministic_proposal"]:
                     continue

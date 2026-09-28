@@ -19,7 +19,6 @@ from run_round4 import ROUND4_QUESTIONS, case_of, index_of
 from sweep import checked_stale
 
 
-
 def main() -> None:
     out = Path(sys.argv[1])
     out.mkdir(exist_ok=True)

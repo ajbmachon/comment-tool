@@ -9,19 +9,18 @@ usage: run-slot -- uv run --project <jev-navigator> --extra typesafe python rewr
 
 import json
 import re
-from pathlib import Path
 
 from jev_navigator.index.code_index import CodeIndex
 
 from comment_review import question_set
+from data_root import DATA
 from journaled_client import journaled_judge
 from run_round4 import ROUND4_QUESTIONS, case_of
 from sample_docs import case_paths, doc_comment, rank, round4_paths
 from sample_round4 import REPOSITORIES, candidate_files, packet, used_paths
 from sweep import judged
 
-HERE = Path(__file__).resolve().parent
-OUT = HERE / "docs-rewrite"
+OUT = DATA / "docs-rewrite"
 PER_REPOSITORY, MAX_DOCS = 5, 250
 SOURCES = {
     "heedvane": (REPOSITORIES["heedvane"][0], "a3bde2aa8", re.compile(r"^apps/web/src/lib/.*\.(ts|tsx)$"),
@@ -33,7 +32,7 @@ PREFIXES = {"heedvane": "hv-r", "analysis-engine": "en-r"}
 
 
 def validation_paths() -> set[str]:
-    return case_paths(HERE / "docs" / "cases.jsonl")
+    return case_paths(DATA / "docs" / "cases.jsonl")
 
 
 def candidates(name: str, used: set[str]):

@@ -9,16 +9,15 @@ usage: run-slot -- uv run --project <jev-navigator> --extra typesafe python ceil
 
 import json
 from collections import defaultdict
-from pathlib import Path
 
 from jev_navigator.history import FetchedSpan, HistoryStep, ceiling_curve
 
+from data_root import DATA
 from journaled_client import journaled_judge
 from sweep import HOLDS_WHAT_COMMENT_IS_ABOUT, STOP_SECTIONS
 
-HERE = Path(__file__).resolve().parent
-SWEEP = HERE / "pass" / "lib-a3bde2aa-rebuilt"
-OUT = HERE / "ceiling"
+SWEEP = DATA / "pass" / "lib-a3bde2aa-rebuilt"
+OUT = DATA / "ceiling"
 SEARCH_PREFIX = "the code this comment describes: "
 FOUND_AT = 0.8
 MIN_OPENED = 2

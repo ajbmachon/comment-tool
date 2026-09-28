@@ -23,12 +23,12 @@ usage: python3 score_round6.py
 """
 
 from collections import Counter
-from pathlib import Path
 
 import compose
 import score_round4 as shared
+from data_root import DATA
 
-ROUND = Path(__file__).resolve().parent / "round6"
+ROUND = DATA / "round6"
 BAR_REASON = "fix stale below bar"
 
 

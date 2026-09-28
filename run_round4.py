@@ -12,12 +12,13 @@ from pathlib import Path
 from jev_navigator.index.code_index import CodeIndex
 
 from comment_review import MEASURED_CONTEXT, CommentCase, comment_state, question_set
+from data_root import DATA
 from journaled_client import journaled_judge
 from sample_round4 import REPOSITORIES
 from sweep import judged
 
 HERE = Path(__file__).resolve().parent
-ROUND = HERE / "round4"
+ROUND = DATA / "round4"
 ROUND4_QUESTIONS = HERE / "questions.round4.json"
 """The questions round 4, the first doc round, the gate replay and the rewrite pilot were asked."""
 

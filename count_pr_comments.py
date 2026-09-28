@@ -20,9 +20,9 @@ from jev_navigator.index.code_index import CodeIndex
 
 from classify import changed_lines, is_touched
 from comment_discovery import code_decision, found_comments
+from data_root import DATA
 from list_claims import list_claim_for
 
-HERE = Path(__file__).resolve().parent
 PROJECTS = Path.home() / "Projects"
 INDEX_FILES = 300
 
@@ -47,7 +47,7 @@ def _touched_in(repository: Path, commit: str, files: list[str], touched: dict) 
 def jev_seconds() -> list[float]:
     """Seconds from each stored Jev request to its response, over every journal kept here."""
     seconds = []
-    for journal in HERE.rglob("journal.jsonl"):
+    for journal in DATA.rglob("journal.jsonl"):
         sent = {}
         for event in map(json.loads, journal.read_text().splitlines()):
             at = datetime.fromisoformat(event["captured_at"])

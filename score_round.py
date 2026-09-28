@@ -10,9 +10,13 @@ import json
 import sys
 from pathlib import Path
 
+from data_root import DATA
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "round3"))
-from compose_frozen import decision_path, readout_a  # the rule round 3 and the lib sweep were measured with
+sys.path.insert(0, str(DATA / "round3"))
+from compose_frozen import (  # the rule round 3 and the lib sweep were measured with
+    decision_path,
+    readout_a,
+)
 
 SOL_TRUTH = {"true": 1.0, "false": 0.0, "ambiguous": 0.5}
 SAME_ACTION = {("rewrite", "link_owner"), ("link_owner", "rewrite")}
@@ -61,8 +65,8 @@ def main() -> None:
     b_of = {c: jev[c]["action"]["choice"] for c in cases}
     wrong = {c for c in cases if not (matches(a_of[c], truth[c]) and matches(b_of[c], truth[c]))}
     print(f"{n} cases. Sol actions: {dict(sorted(__import__('collections').Counter(truth.values()).items()))}")
-    print(f"| Readout | Decided automatically | Match Sol, of decided | Escalated | A-or-B mistakes escalated |")
-    print(f"|---|---|---|---|---|")
+    print("| Readout | Decided automatically | Match Sol, of decided | Escalated | A-or-B mistakes escalated |")
+    print("|---|---|---|---|---|")
     print(f"| A alone | {n} of {n} | {sum(matches(a_of[c], truth[c]) for c in cases)} of {n} | 0 | - |")
     print(f"| B alone | {n} of {n} | {sum(matches(b_of[c], truth[c]) for c in cases)} of {n} | 0 | - |")
     detail = []

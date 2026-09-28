@@ -10,10 +10,10 @@ import sys
 from pathlib import Path
 
 from comment_review import MEASURED_CONTEXT, comment_state
+from data_root import DATA
 from run_round4 import case_of, index_of
 
-HERE = Path(__file__).resolve().parent
-LABELLED = tuple(HERE / name / "cases.jsonl" for name in ("round3-nav-described", "round4", "docs", "docs2"))
+LABELLED = tuple(DATA / name / "cases.jsonl" for name in ("round3-nav-described", "round4", "docs", "docs2"))
 """The packets the current Sol labels were given: round 3's fresh labels, round 4's and both doc rounds'."""
 
 

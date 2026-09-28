@@ -18,16 +18,16 @@ usage: run-slot -- uv run --project <jev-navigator> python score_list_round.py
 """
 
 import json
-from pathlib import Path
 
 from jev_navigator.index.code_index import CodeIndex
 
 import compose
 from comment_discovery import found_comments
+from data_root import DATA
 from list_claims import LIST_CLAIM, entry_items, list_claim_for
 from sample_round4 import REPOSITORIES
 
-ROUND = Path(__file__).resolve().parent / "list-round"
+ROUND = DATA / "list-round"
 SOL_TRUTH = {"true": 1.0, "false": 0.0, "ambiguous": 0.5}
 
 

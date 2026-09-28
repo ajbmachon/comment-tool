@@ -7,16 +7,15 @@ usage: python3 compare_readouts.py
 
 import json
 from collections import Counter
-from pathlib import Path
 
 from compare_labels import A_TO_ACTION, readout_a, rows
+from data_root import DATA
 
-HERE = Path(__file__).resolve().parent
 LINK_EQUIVALENT = {("rewrite", "link_owner"), ("link_owner", "rewrite")}
 
 def jev_answers() -> dict:
     out = {}
-    for path in sorted((HERE / "run").glob("*.json")):
+    for path in sorted((DATA / "run").glob("*.json")):
         record = json.loads(path.read_text())
         out[record["case_id"]] = record["response"]["answers"]
     return out
@@ -38,9 +37,9 @@ def matches(ours: str, sol: str) -> bool:
     return ours == sol or (ours, sol) in LINK_EQUIVALENT
 
 def main() -> None:
-    sol = rows(str(HERE / "sol-labels.jsonl"))
+    sol = rows(str(DATA / "sol-labels.jsonl"))
     jev = jev_answers()
-    facts = {c["case_id"]: c["code_facts"] for c in map(json.loads, (HERE / "cases.jsonl").read_text().splitlines())}
+    facts = {c["case_id"]: c["code_facts"] for c in map(json.loads, (DATA / "cases.jsonl").read_text().splitlines())}
     cases = sorted(set(sol) & set(jev))
     a_hits = b_hits = strict_b = 0
     lines = []

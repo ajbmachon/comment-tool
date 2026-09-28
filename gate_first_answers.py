@@ -19,13 +19,13 @@ from pathlib import Path
 import compose
 from comment_facts import facts_of
 from comment_review import question_set
+from data_root import DATA
 from extract_cases import comment_prefix
 from journaled_client import journaled_judge
 from run_round4 import ROUND4_QUESTIONS
 from sweep import COMMENT_WORKERS
 
-HERE = Path(__file__).resolve().parent
-LIB = HERE / "pass/lib-a3bde2aa-rebuilt"
+LIB = DATA / "pass/lib-a3bde2aa-rebuilt"
 
 
 def stored_states(answers_path: Path) -> dict:
@@ -42,8 +42,8 @@ def lib_escalations() -> list[dict]:
 
 
 def round3_escalations() -> list[dict]:
-    cases = {case["case_id"]: case for case in map(json.loads, (HERE / "round3-nav-described/cases.jsonl").read_text().splitlines())}
-    passes = [json.loads(line) for line in (HERE / "round3-nav-described/pass.jsonl").read_text().splitlines()]
+    cases = {case["case_id"]: case for case in map(json.loads, (DATA / "round3-nav-described/cases.jsonl").read_text().splitlines())}
+    passes = [json.loads(line) for line in (DATA / "round3-nav-described/pass.jsonl").read_text().splitlines()]
     by_location = {f"{c['provenance']['path']}:{c['provenance']['comment_lines'][0]}": c for c in cases.values()}
     return [{"source": "round 3", "location": row["location"], "comment": row["comment"], "settled_by_search": False,
              "state": by_location[row["location"]]["state"]} for row in passes if "escalate" in row]

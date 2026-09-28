@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 
+import pytest
 from jev_navigator.directives.find_code import Outcome
 from jev_navigator.index.code_index import CodeIndex
 from jev_navigator.judgments.judge import Judge
@@ -11,16 +12,18 @@ from jev_navigator.testing import ScriptedJevClient
 import compose
 from comment_discovery import FoundComment
 from comment_review import question_set
+from data_root import DATA
 from run_round4 import case_of
 from sweep import QUESTIONS, THREE_OUTCOMES, judged, review_found
 
-HERE = Path(__file__).resolve().parent
+pytestmark = pytest.mark.local
+
 HEEDVANE = Path.home() / "Projects/heedvane"
 FIRST_ANSWERS = {"states_hidden_rule": 0.9, "code_is_hard_to_follow": 0.38, **dict.fromkeys(compose.STALE_PARTS, 0.9)}
 
 
 def hv_h12() -> dict:
-    return next(case for case in map(json.loads, (HERE / "round4/cases.jsonl").read_text().splitlines())
+    return next(case for case in map(json.loads, (DATA / "round4/cases.jsonl").read_text().splitlines())
                 if case["case_id"] == "hv-h12")
 
 
@@ -61,7 +64,7 @@ def test_a_kept_comment_whose_detail_is_not_shown_says_its_staleness_was_not_che
 
 
 def stored(folder: str, name: str, case_id: str) -> dict:
-    return next(row for row in map(json.loads, (HERE / folder / name).read_text().splitlines()) if row["case_id"] == case_id)
+    return next(row for row in map(json.loads, (DATA / folder / name).read_text().splitlines()) if row["case_id"] == case_id)
 
 
 def test_a_decided_rewrite_carries_its_rewrite_job_for_the_caller():

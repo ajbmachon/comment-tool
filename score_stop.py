@@ -12,11 +12,12 @@ import json
 from collections import Counter
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-LABELS = HERE / "stop-labels"
+from data_root import DATA
+
+LABELS = DATA / "stop-labels"
 YES_AT, NO_AT = 0.8, 0.2
 SEARCH_PREFIX = "the code this comment describes: "
-STORES = {"lib": HERE / "pass" / "lib-a3bde2aa-rebuilt", "round4": HERE / "round4"}
+STORES = {"lib": DATA / "pass" / "lib-a3bde2aa-rebuilt", "round4": DATA / "round4"}
 
 
 def records(path: Path) -> list[dict]:
@@ -36,7 +37,7 @@ def place_checks(store: list[dict], comment: str) -> list[float]:
 def shown_lines(search_id: str) -> tuple[str, int, int] | None:
     """The file and lines of the code shown after the comment, from the row that escalated."""
     if search_id.startswith("round4/"):
-        case = next(c for c in records(HERE / "round4" / "cases.jsonl") if c["case_id"] == search_id.split("/")[1])
+        case = next(c for c in records(DATA / "round4" / "cases.jsonl") if c["case_id"] == search_id.split("/")[1])
         first, last = case["provenance"]["code_after_lines"]
         return case["provenance"]["path"], first, last
     for path in (STORES["lib"]).glob("apps-*.jsonl"):
@@ -55,9 +56,9 @@ def overlaps(place_at: str, shown: tuple[str, int, int] | None) -> bool:
 
 def stop_curve(search_id: str, comment: str) -> list[float]:
     if search_id.startswith("round4/"):
-        row = next(r for r in records(HERE / "round4" / "pass.jsonl") if r["case_id"] == search_id.split("/")[1])
+        row = next(r for r in records(DATA / "round4" / "pass.jsonl") if r["case_id"] == search_id.split("/")[1])
         return [row["search"]["stop_question"]["probability"]]
-    curve = next(c for c in records(HERE / "ceiling" / "curves.jsonl") if c["comment"] == comment)
+    curve = next(c for c in records(DATA / "ceiling" / "curves.jsonl") if c["comment"] == comment)
     return [point["probability"] for point in curve["points"]]
 
 

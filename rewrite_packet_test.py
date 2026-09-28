@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from rewrite_packet import python_signature, ts_signature
 
 PYTHON = '''
@@ -31,6 +33,7 @@ def test_a_python_function_signature_comes_from_the_parser():
     assert (signature["return_type"], signature["raises"]) == ("dict[str, int]", ["FileNotFoundError"])
 
 
+@pytest.mark.local
 def test_a_typescript_function_signature_names_its_effect_failure():
     signature = ts_signature(Path.home() / "Projects/heedvane", "plan.ts", TYPESCRIPT, line=3)
 
@@ -39,6 +42,7 @@ def test_a_typescript_function_signature_names_its_effect_failure():
     assert (signature["failure_type"], signature["thrown_or_failed"]) == ("PlanMissing", ["PlanMissing"])
 
 
+@pytest.mark.local
 def test_a_typescript_header_gets_the_module_exports():
     signature = ts_signature(Path.home() / "Projects/heedvane", "plan.ts", TYPESCRIPT, line=2, scope="module")
 

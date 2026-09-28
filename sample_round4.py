@@ -18,8 +18,8 @@ from jev_navigator.index.code_index import CodeIndex
 
 from comment_discovery import code_decision, found_comments
 from comment_review import MEASURED_CONTEXT, comment_state
+from data_root import DATA
 
-HERE = Path(__file__).resolve().parent
 SALT = "comment-fresh-v4"
 PER_REPOSITORY = 15
 REPOSITORIES = {
@@ -29,7 +29,7 @@ REPOSITORIES = {
     "analysis-engine": (Path.home() / "Projects/analysis-engine", "65ce1972665975d20bb09f3638a6155f6fb3f9b9", "en-h",
                         re.compile(r"^enginepy/.*\.py$"), re.compile(r"_test\.py$|/tests?/|generated|conftest\.py$")),
 }
-USED_SEEDS = (HERE / "round3" / "used-seeds.tsv", HERE / "round3" / "seeds.tsv")
+USED_SEEDS = (DATA / "round3" / "used-seeds.tsv", DATA / "round3" / "seeds.tsv")
 REVIEWED_KIND = "block"
 
 

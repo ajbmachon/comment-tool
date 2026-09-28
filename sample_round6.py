@@ -20,10 +20,10 @@ from jev_navigator.index.code_index import CodeIndex
 
 from classify import changed_lines, is_touched
 from comment_discovery import code_decision, found_comments
+from data_root import DATA
 from list_claims import entry_items, list_claim_for
 from sample_round4 import REPOSITORIES, packet
 
-HERE = Path(__file__).resolve().parent
 SALT = "round6-v1"
 PER_PULL_REQUEST = 5
 PULL_REQUESTS = (
@@ -45,7 +45,7 @@ def rank(*parts) -> str:
 def labelled_before() -> set[tuple[str, str]]:
     """(file, comment text) of every comment an earlier round's packet holds."""
     return {(case["provenance"]["path"], case["state"]["comment"]["text"])
-            for cases in HERE.glob("*/cases.jsonl") if cases.parent.name != "round6"
+            for cases in DATA.glob("*/cases.jsonl") if cases.parent.name != "round6"
             for case in map(json.loads, cases.read_text().splitlines()) if "provenance" in case}
 
 

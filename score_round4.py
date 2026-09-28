@@ -19,13 +19,14 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "round3"))
-sys.path.insert(0, str(Path(__file__).resolve().parent / "round4"))
+from data_root import DATA
+
+sys.path.insert(0, str(DATA / "round3"))
+sys.path.insert(0, str(DATA / "round4"))
 import compose_frozen  # noqa: E402
 import compose_round4 as compose  # noqa: E402
 
-HERE = Path(__file__).resolve().parent
-ROUND = HERE / "round4"
+ROUND = DATA / "round4"
 SOL_TRUTH = {"true": 1.0, "false": 0.0, "ambiguous": 0.5}
 DECIDED_BAR, MATCH_BAR = 0.70, 0.90
 

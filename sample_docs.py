@@ -18,9 +18,15 @@ from pathlib import Path
 from jev_navigator.index.code_index import CodeIndex
 
 from comment_discovery import DOC_KINDS, found_comments
-from sample_round4 import PER_REPOSITORY, REPOSITORIES, candidate_files, packet, used_paths
+from data_root import DATA
+from sample_round4 import (
+    PER_REPOSITORY,
+    REPOSITORIES,
+    candidate_files,
+    packet,
+    used_paths,
+)
 
-HERE = Path(__file__).resolve().parent
 SALT = "comment-docs-v1"
 CASE_PREFIXES = {"heedvane": "hv-", "analysis-engine": "en-"}
 
@@ -30,7 +36,7 @@ def rank(*parts) -> str:
 
 
 def round4_paths() -> set[str]:
-    return case_paths(HERE / "round4" / "cases.jsonl")
+    return case_paths(DATA / "round4" / "cases.jsonl")
 
 
 def case_paths(cases: Path) -> set[str]:

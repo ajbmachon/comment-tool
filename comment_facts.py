@@ -9,7 +9,14 @@ import re
 
 from jev_navigator.facts import FactRule, find_facts
 
-from extract_cases import DATE, TICKET, TODO, comment_body, inside_name, is_commented_out_code
+from extract_cases import (
+    DATE,
+    TICKET,
+    TODO,
+    comment_body,
+    inside_name,
+    is_commented_out_code,
+)
 
 
 def outside_any_name(text: str, match: re.Match) -> bool:

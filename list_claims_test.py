@@ -4,12 +4,14 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
 from jev_navigator.index.code_index import CodeIndex
 from jev_navigator.judgments.judge import Judge
 from jev_navigator.testing import ScriptedJevClient
 
 import compose
 from comment_review import question_set
+from data_root import DATA
 from list_claims import (
     CALLER_DECIDES,
     ENTRY_CHECK,
@@ -23,7 +25,6 @@ from run_round4 import case_of
 from sweep import QUESTIONS, judged
 from ts_parse import typescript_of
 
-HERE = Path(__file__).resolve().parent
 ENGINE = Path.home() / "Projects/analysis-engine"
 TYPESCRIPT_COMPILER = typescript_of(Path.home() / "Projects/heedvane")
 TYPESCRIPT = """export const SAFE_METHODS = ["GET", "HEAD"] as const;
@@ -34,7 +35,7 @@ export const LIMIT = 3;
 
 
 def en_h11() -> dict:
-    return next(case for case in map(json.loads, (HERE / "round4/cases.jsonl").read_text().splitlines())
+    return next(case for case in map(json.loads, (DATA / "round4/cases.jsonl").read_text().splitlines())
                 if case["case_id"] == "en-h11")
 
 
@@ -54,6 +55,7 @@ def test_only_every_all_each_always_never_and_none_trigger_a_list_claim():
     assert not claims_every_entry("# Checked in this order; the first match wins.")
 
 
+@pytest.mark.local
 def test_python_list_entries_come_from_the_parser():
     case = en_h11()["provenance"]
     source = git_source(ENGINE, case["commit"], case["path"])
@@ -65,6 +67,7 @@ def test_python_list_entries_come_from_the_parser():
     assert literal.entries[-1] == 're.compile(r"(^|/)\\.github/workflows/[^/]+\\.ya?ml$")'
 
 
+@pytest.mark.local
 def test_typescript_arrays_enums_and_unions_are_lists_and_a_constant_is_not():
     entries = [list_literal(TYPESCRIPT, "lists.ts", line, TYPESCRIPT_COMPILER) for line in (1, 2, 3, 4)]
 
@@ -86,6 +89,7 @@ def test_a_doubtful_claim_or_entry_escalates_and_a_held_claim_changes_nothing():
     assert compose.list_claim(0.9, {"a": 0.9, "b": 0.7}) == compose.list_claim(0.1, {"a": 0.1})
 
 
+@pytest.mark.local
 def test_en_h11_asks_the_list_claim_in_its_first_request_and_one_question_per_entry():
     raw = en_h11()
     case = case_of(raw)

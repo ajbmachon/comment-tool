@@ -15,8 +15,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-EMPTY = HERE / "sol-empty"
+from data_root import DATA
+
+EMPTY = DATA / "sol-empty"
 CODEX = Path.home() / ".nvm/versions/node/v22.23.1/bin/codex"
 MODEL, EFFORT, WORKERS = "gpt-5.6-sol", "high", 4
 VERDICTS = ("true", "false", "ambiguous")

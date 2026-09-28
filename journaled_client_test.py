@@ -8,6 +8,8 @@ from jev_navigator.judgments.journal import JournalRequest, RawResponse
 
 from journaled_client import EvalsJournal, NotOwnRepositoryError
 
+pytestmark = pytest.mark.local
+
 BODY = b'{"answers": {"q": {"noul": 0.9}}}'
 
 

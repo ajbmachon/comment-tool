@@ -13,12 +13,17 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from data_root import DATA
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "round3"))
-from compose_frozen import CUTOFF, ESCALATION_BAND, decision_path  # the rule round 3 and the lib sweep were measured with
+sys.path.insert(0, str(DATA / "round3"))
+from compose_frozen import (  # the rule round 3 and the lib sweep were measured with
+    CUTOFF,
+    ESCALATION_BAND,
+    decision_path,
+)
+
 from extract_cases import code_facts, comment_prefix
 
-HERE = Path(__file__).resolve().parent
 EXCERPT_CHARS = 160
 LIBRARY = "jev-navigator@81b5498"
 TOOL_FILES = ("sweep.py", "comment_review.py", "compose.py", "questions.json", "extract_cases.py")
@@ -180,7 +185,7 @@ def trace(row: dict, records: dict[str, dict], all_records: list[dict]) -> dict:
 
 def provenance(records: list[dict]) -> dict:
     return {"library": LIBRARY,
-            "tool_file_sha256": {name: hashlib.sha256((HERE / name).read_bytes()).hexdigest() for name in TOOL_FILES},
+            "tool_file_sha256": {name: hashlib.sha256((DATA / name).read_bytes()).hexdigest() for name in TOOL_FILES},
             "served_models": sorted({record["model"] for record in records})}
 
 

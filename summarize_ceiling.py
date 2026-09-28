@@ -8,18 +8,17 @@ usage: python3 summarize_ceiling.py
 """
 
 import json
-from pathlib import Path
 
 from ceiling_lib_sweep import searched_more_than_once
+from data_root import DATA
 
-HERE = Path(__file__).resolve().parent
 YES_AT = 0.8
 
 
 def curves() -> list[dict]:
     """The replayed curves, without comments searched at two locations, whose places were merged."""
     ambiguous = searched_more_than_once()
-    rows = [json.loads(line) for line in (HERE / "ceiling" / "curves.jsonl").read_text().splitlines()]
+    rows = [json.loads(line) for line in (DATA / "ceiling" / "curves.jsonl").read_text().splitlines()]
     return [row for row in rows if row["comment"] not in ambiguous]
 
 

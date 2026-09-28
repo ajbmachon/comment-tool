@@ -12,14 +12,19 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "round3"))
-from compose_frozen import escalation_reasons, readout_a  # the rule round 3 and the lib sweep were measured with
+from data_root import DATA
+
+sys.path.insert(0, str(DATA / "round3"))
+from compose_frozen import (  # the rule round 3 and the lib sweep were measured with
+    escalation_reasons,
+    readout_a,
+)
+
 from extract_cases import code_facts
 from score_round import load_rows, matches, nouls
 
-HERE = Path(__file__).resolve().parent
-ROUNDS = {"Round 1 (32 comments, rule order fixed after seeing them)": HERE,
-          "Round 2 (30 fresh comments, after the fact)": HERE / "round2"}
+ROUNDS = {"Round 1 (32 comments, rule order fixed after seeing them)": DATA,
+          "Round 2 (30 fresh comments, after the fact)": DATA / "round2"}
 SOL_TRUTH = {"true": 1.0, "false": 0.0, "ambiguous": 0.5}
 
 

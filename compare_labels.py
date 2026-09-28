@@ -9,6 +9,8 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from data_root import DATA
+
 VALUE = ("explains_hard_code", "states_hidden_rule", "teaches_needed_knowledge", "points_to_owner")
 A_TO_ACTION = {"stale_fix": "fix_stale", "rename_or_extract": "refactor_instead", "removal": "remove",
                "rewrite": "rewrite", "keep": "keep"}
@@ -41,8 +43,8 @@ def readout_a(answers: dict, facts: dict) -> str:
 def main() -> None:
     sol = rows("sol-labels.jsonl")
     earlier = rows("sol-labels.v3-questions-partial.jsonl")
-    draft = json.loads(Path("labels.provisional.json").read_text())["labels"]
-    facts = {c["case_id"]: c["code_facts"] for c in map(json.loads, Path("cases.jsonl").read_text().splitlines())}
+    draft = json.loads(DATA / "labels.provisional.json".read_text())["labels"]
+    facts = {c["case_id"]: c["code_facts"] for c in map(json.loads, DATA / "cases.jsonl".read_text().splitlines())}
     actions = {cid: r["verdict"]["answers"]["action"]["choice"] for cid, r in sol.items()}
     print("Sol actions:", dict(Counter(actions.values())))
     for q in ("refactor_instead.kind", "link_owner.kind"):
@@ -79,7 +81,7 @@ def main() -> None:
             else:
                 print(f"  {cid} {q}: {earlier[cid]['verdict']['answers'][q]['label']} -> {sol[cid]['verdict']['answers'][q]['label']}")
     print(f"  same {same} of {total} labels over {len(set(sol) & set(earlier))} cases")
-    errors = [json.loads(l) for l in Path("sol-labels.jsonl").read_text().splitlines() if "error" in json.loads(l)]
+    errors = [row for row in map(json.loads, (DATA / "sol-labels.jsonl").read_text().splitlines()) if "error" in row]
     print(f"\nerrors recorded: {len(errors)}")
 
 

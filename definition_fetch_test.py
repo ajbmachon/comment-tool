@@ -3,6 +3,7 @@
 import subprocess
 from pathlib import Path
 
+import pytest
 from jev_navigator.index.spans import Span
 
 from definition_fetch import (
@@ -47,6 +48,7 @@ def test_a_parameter_has_no_local_binding():
     assert local_binding(lines, "items", before_line=2, language="typescript") is None
 
 
+@pytest.mark.local
 def test_hv_h12_fetches_the_function_that_sets_should_clear():
     shown = Span(HV_H12_FILE, 85, 86)
 
@@ -67,6 +69,7 @@ def test_builtins_and_language_globals_need_no_definition():
     assert condition_names("  if (Array.isArray(rows) && Number.isFinite(limit)) {", "typescript") == ("rows", "limit")
 
 
+@pytest.mark.local
 def test_a_parameter_resolves_to_its_function_signature():
     shown = Span(EN_D09_FILE, 15, 21)
 

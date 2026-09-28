@@ -12,10 +12,14 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "round3"))
-from compose_frozen import escalation_reasons, readout_a  # the rule round 3 and the lib sweep were measured with
+from data_root import DATA
 
-HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(DATA / "round3"))
+from compose_frozen import (  # the rule round 3 and the lib sweep were measured with
+    escalation_reasons,
+    readout_a,
+)
+
 SOL_TRUTH = {"true": 1.0, "false": 0.0, "ambiguous": 0.5}
 NOISE_POINTS = 0.02
 
@@ -37,7 +41,7 @@ def answer_key(label: dict, facts: dict) -> str:
 
 
 def judged(arm: Path, labels: Path) -> dict:
-    facts = {cid: c["code_facts"] for cid, c in rows(HERE / "round3" / "cases.jsonl").items()}
+    facts = {cid: c["code_facts"] for cid, c in rows(DATA / "round3" / "cases.jsonl").items()}
     sol, jev = rows(labels), jev_probabilities(arm)
     return {cid: {"a": readout_a(jev[cid], facts[cid]), "escalated": bool(escalation_reasons(jev[cid], facts[cid])),
                   "key": answer_key(sol[cid], facts[cid]), "direct": sol[cid]["verdict"]["answers"]["action"]["choice"]}
@@ -54,8 +58,8 @@ def judgment_line(name: str, result: dict) -> str:
 
 
 def retrieval_lines() -> list[str]:
-    old_cases, new_cases = rows(HERE / "round3" / "cases.jsonl"), rows(HERE / "round3-nav-described" / "cases.jsonl")
-    old_labels, new_labels = rows(HERE / "round3" / "sol-labels.jsonl"), rows(HERE / "round3-nav-described" / "sol-labels.fresh.jsonl")
+    old_cases, new_cases = rows(DATA / "round3" / "cases.jsonl"), rows(DATA / "round3-nav-described" / "cases.jsonl")
+    old_labels, new_labels = rows(DATA / "round3" / "sol-labels.jsonl"), rows(DATA / "round3-nav-described" / "sol-labels.fresh.jsonl")
     lines = []
     for same in (True, False):
         ids = [cid for cid in old_cases if (old_cases[cid]["state"] == new_cases[cid]["state"]) == same]
@@ -77,11 +81,11 @@ def noise_lines(first: Path, second: Path) -> list[str]:
 
 
 def main() -> None:
-    fresh = HERE / "round3-nav-described" / "sol-labels.fresh.jsonl"
-    print(judgment_line("Before (frozen round 3, pre-registered)", judged(HERE / "round3", HERE / "round3" / "sol-labels.jsonl")))
-    print(judgment_line("After, no Score (described cut, post-hoc)", judged(HERE / "round3-nav-described", fresh)))
-    print(judgment_line("After, ask_all with Score (same packets)", judged(HERE / "round3-ask-all", fresh)))
-    for line in retrieval_lines() + noise_lines(HERE / "round3-nav-described", HERE / "round3-ask-all"):
+    fresh = DATA / "round3-nav-described" / "sol-labels.fresh.jsonl"
+    print(judgment_line("Before (frozen round 3, pre-registered)", judged(DATA / "round3", DATA / "round3" / "sol-labels.jsonl")))
+    print(judgment_line("After, no Score (described cut, post-hoc)", judged(DATA / "round3-nav-described", fresh)))
+    print(judgment_line("After, ask_all with Score (same packets)", judged(DATA / "round3-ask-all", fresh)))
+    for line in retrieval_lines() + noise_lines(DATA / "round3-nav-described", DATA / "round3-ask-all"):
         print(line)
 
 

@@ -20,9 +20,9 @@ from collections import defaultdict
 from pathlib import Path
 
 import compose
+from data_root import DATA
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE / "round3"))
+sys.path.insert(0, str(DATA / "round3"))
 import compose_frozen  # the round-3 rule, with its single stale question
 
 SOL_TRUTH = {"true": 1.0, "false": 0.0, "ambiguous": 0.5}
@@ -41,17 +41,17 @@ def sol(label: dict) -> dict:
 
 
 def round3() -> list[dict]:
-    cases = rows(HERE / "round3" / "cases.jsonl")
-    labels = rows(HERE / "round3-nav-described" / "sol-labels.fresh.jsonl")
-    runs = (json.loads(path.read_text()) for path in (HERE / "round3-nav-described" / "run").glob("*.json"))
+    cases = rows(DATA / "round3" / "cases.jsonl")
+    labels = rows(DATA / "round3-nav-described" / "sol-labels.fresh.jsonl")
+    runs = (json.loads(path.read_text()) for path in (DATA / "round3-nav-described" / "run").glob("*.json"))
     jev = {r["case_id"]: {q: a["noul"] for q, a in r["response"]["answers"].items() if a["type"] == "noul"} for r in runs}
     return [entry("round 3", cid, jev[cid], sol(labels[cid]), cases[cid]["code_facts"], compose_frozen, "contradicts_code")
             for cid in sorted(jev)]
 
 
 def round4() -> list[dict]:
-    cases, passes = rows(HERE / "round4" / "cases.jsonl"), rows(HERE / "round4" / "pass.jsonl")
-    labels, reasked = rows(HERE / "round4" / "sol-labels.jsonl"), rows(HERE / "round4-definitions-elsewhere" / "rows.jsonl")
+    cases, passes = rows(DATA / "round4" / "cases.jsonl"), rows(DATA / "round4" / "pass.jsonl")
+    labels, reasked = rows(DATA / "round4" / "sol-labels.jsonl"), rows(DATA / "round4-definitions-elsewhere" / "rows.jsonl")
     result = []
     for cid, row in passes.items():
         p = dict(row.get("first_answer", row)["probabilities"])
@@ -61,7 +61,7 @@ def round4() -> list[dict]:
 
 
 def doc_round(name: str, folder: str) -> list[dict]:
-    cases, passes, labels = (rows(HERE / folder / f) for f in ("cases.jsonl", "pass.jsonl", "sol-labels.jsonl"))
+    cases, passes, labels = (rows(DATA / folder / f) for f in ("cases.jsonl", "pass.jsonl", "sol-labels.jsonl"))
     return [entry(name, cid, row.get("first_answer", row)["probabilities"], sol(labels[cid]), cases[cid]["code_facts"],
                   compose, "stale") for cid, row in passes.items()]
 

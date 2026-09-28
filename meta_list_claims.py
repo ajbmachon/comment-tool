@@ -16,11 +16,11 @@ from jev_navigator.judgments.review import export_for_review
 from jev_navigator.testing import ScriptedJevClient
 
 from comment_review import question_set
+from data_root import DATA
 from list_claims import ENTRY_CHECK, LIST_CLAIM
 from run_round4 import case_of
 from sweep import QUESTIONS, judged
 
-HERE = Path(__file__).resolve().parent
 ENGINE = Path.home() / "Projects/analysis-engine"
 CLAIM_USE = ("compose.list_claim reads this probability at cut-off 0.5: strictly between 0.40 and 0.60 escalates; "
              "at 0.5 or more, B is asked once per entry. Only asked when code finds a quantifier word and a list literal.")
@@ -32,12 +32,12 @@ ENTRY_USE = ("compose.list_claim reads every entry: any entry at 0.20 or less ma
 
 def main() -> None:
     out = Path(sys.argv[1])
-    raw = next(c for c in map(json.loads, (HERE / "round4/cases.jsonl").read_text().splitlines()) if c["case_id"] == "en-h11")
+    raw = next(c for c in map(json.loads, (DATA / "round4/cases.jsonl").read_text().splitlines()) if c["case_id"] == "en-h11")
     client = ScriptedJevClient(nouls={LIST_CLAIM: 0.95}, default_noul=0.05)
     index = CodeIndex.at_commit(ENGINE, raw["provenance"]["commit"], [raw["provenance"]["path"]])
     judged(index, Judge(client), case_of(raw), question_set(json.loads(QUESTIONS.read_text())))
     earlier_uses = {qid.split("@")[0]: use for qid, use in
-                    json.loads((HERE / "meta-round4/candidate.json").read_text())["intended_uses"].items()}
+                    json.loads((DATA / "meta-round4/candidate.json").read_text())["intended_uses"].items()}
     for number, (state, questions) in enumerate(client.requests):
         uses = {qid: CLAIM_USE if qid.startswith(LIST_CLAIM) else ENTRY_USE if qid.startswith(ENTRY_CHECK.name)
                 else earlier_uses[qid.split("@")[0]] for qid in questions}

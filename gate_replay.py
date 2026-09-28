@@ -9,11 +9,10 @@ usage: python3 gate_replay.py
 
 import json
 from collections import Counter
-from pathlib import Path
 
 import compose
+from data_root import DATA
 
-HERE = Path(__file__).resolve().parent
 STORED = {"round 4": ["round4/pass.jsonl"]}
 
 
@@ -40,7 +39,7 @@ def replayed(row: dict) -> dict:
 
 
 def rows_of(paths: list[str]) -> list[dict]:
-    return [json.loads(line) for path in paths for line in (HERE / path).read_text().splitlines()]
+    return [json.loads(line) for path in paths for line in (DATA / path).read_text().splitlines()]
 
 
 def main() -> None:

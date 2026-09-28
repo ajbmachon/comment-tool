@@ -13,11 +13,11 @@ import sys
 from pathlib import Path
 
 from ceiling_lib_sweep import searched_more_than_once
+from data_root import DATA
 from sol_labels import ask_sol
 
-HERE = Path(__file__).resolve().parent
-OUT = HERE / "stop-labels"
-SWEEP = HERE / "pass" / "lib-a3bde2aa-rebuilt"
+OUT = DATA / "stop-labels"
+SWEEP = DATA / "pass" / "lib-a3bde2aa-rebuilt"
 SEARCH_PREFIX = "the code this comment describes: "
 MIN_OPENED = 2
 LABELS = ("true", "false", "ambiguous")
@@ -74,10 +74,10 @@ def lib_sweep_packets() -> list[dict]:
 
 
 def round4_packet(case_id: str) -> dict:
-    case = next(c for c in records(HERE / "round4" / "cases.jsonl") if c["case_id"] == case_id)
+    case = next(c for c in records(DATA / "round4" / "cases.jsonl") if c["case_id"] == case_id)
     comment = case["state"]["comment"]["text"]
     return {"search_id": f"round4/{case_id}", "comment": comment, "shown": case["state"]["code"],
-            "places": fetched_places(records(HERE / "round4" / "answers.jsonl"), comment)}
+            "places": fetched_places(records(DATA / "round4" / "answers.jsonl"), comment)}
 
 
 def prompt_of(packet: dict) -> str:

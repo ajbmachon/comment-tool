@@ -12,20 +12,19 @@ usage: run-slot -- uv run --project <jev-navigator> --extra typesafe python list
 import hashlib
 import json
 import sys
-from pathlib import Path
 
 from jev_navigator.index.code_index import CodeIndex
 
 from comment_discovery import found_comments
 from comment_review import question_set
+from data_root import DATA
 from journaled_client import journaled_judge
 from list_claims import entry_items, list_claim_for
 from run_round4 import case_of, index_of
 from sample_round4 import REPOSITORIES, packet
 from sweep import QUESTIONS, judged
 
-HERE = Path(__file__).resolve().parent
-ROUND = HERE / "list-round"
+ROUND = DATA / "list-round"
 SALT = "list-round-v1"
 CHOSEN = {
     "enginepy/workflows/document_analysis/standards_scout.py:318": "target en-h11",
