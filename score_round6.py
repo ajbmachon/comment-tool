@@ -5,11 +5,15 @@ judgments through rule A on 30 fresh model-reviewable comments that recent pull 
 comments and 7 block comments, as drawn). Rule A itself was approved separately; the round does not test
 whether rule A is the right policy. List claims are not part of this round.
 
-Before scoring, `frozen_round.verify` checks the registration again, and the rows must be exactly the 30
-registered ids in the cases, the result and the Sol labels, with no duplicate, gap or extra; a partial run
-is invalid, never a smaller round. Each result row is proven from the journal by `row_audit.audit_row`
-(first request state, request hashes, answers, and the action, decision path, escalation and
-`decided_by` recomputed with the frozen rule). Each Sol label must name the hash of the exact packet and
+Before scoring, `frozen_round.verify` checks the registration again (the manifest bound by its hash in
+`FROZEN.txt`, and agreeing with the code registration in `registered_rounds.py`, which also fixes the
+question file), and the rows must be exactly the 30 registered ids in the cases, the result and the Sol
+labels, with no duplicate, gap or extra. A run with a leftover `pass.jsonl.partial`, or without
+`pass.jsonl`, is not complete and is refused; a partial run is never a smaller round. Every journaled
+request must have asked the registered first question set or the stale-only re-ask set (or only the
+gated search's own questions), and each result row is proven from the journal by `row_audit.audit_row`
+(first request state and question set, request hashes, answers, and the action, decision path,
+escalation and `decided_by` recomputed with the frozen rule). Each Sol label must name the hash of the exact packet and
 questions it was given. A list claim anywhere fails the scoring.
 
 Answer key: the frozen rule (`round6/compose_frozen.py`, hash-pinned) applied to Sol's labels on the exact
@@ -29,9 +33,10 @@ usage: uv run python score_round6.py      (from a checkout at the round's regist
 from collections import Counter
 
 import score_round4 as shared
+from comment_review import question_set
 from data_root import DATA
-from frozen_round import FrozenRoundError, Manifest, frozen_rule, rows_exactly, verify
-from row_audit import audit_row, journal_exchanges
+from frozen_round import FrozenRoundError, Manifest, completed_rows, frozen_rule, rows_exactly, verify
+from row_audit import audit_journal, audit_row, journal_exchanges, registered_question_sets
 from sol_labels import request_sha256 as sol_request_sha256
 
 ROUND = DATA / "round6"
@@ -39,13 +44,16 @@ BAR_REASON = "fix stale below bar"
 
 
 def verified_inputs(manifest: Manifest, rule) -> tuple[dict, dict, dict]:
-    cases, passes, labels = (rows_exactly(ROUND / name, manifest.case_ids) for name in ("cases.jsonl", "pass.jsonl", "sol-labels.jsonl"))
+    cases = rows_exactly(ROUND / "cases.jsonl", manifest.case_ids)
+    passes, labels = (completed_rows(ROUND, name, manifest.case_ids) for name in ("pass.jsonl", "sol-labels.jsonl"))
     if any("items" in case for case in cases.values()) or any("list_claim" in row for row in passes.values()):
         raise FrozenRoundError("a list claim is in round 6; list claims are not part of this round")
+    questions = manifest.questions()
+    sets = registered_question_sets(question_set(questions))
+    audit_journal(ROUND / "journal.jsonl", sets)
     exchanges = journal_exchanges(ROUND / "journal.jsonl")
     for case_id, row in passes.items():
-        audit_row(row, cases[case_id], exchanges, rule)
-    questions = manifest.questions()
+        audit_row(row, cases[case_id], exchanges, rule, sets)
     for case_id, label in labels.items():
         if "verdict" not in label or label["request_sha256"] != sol_request_sha256(cases[case_id]["state"], questions):
             raise FrozenRoundError(f"{case_id}: Sol label missing, failed or given another packet")
