@@ -47,8 +47,9 @@ def prompt_for(case: dict, questions: dict) -> str:
 def parse(text: str, entry_count: int) -> dict:
     verdict = json.loads(text[text.find("{"):text.rfind("}") + 1])
     labels = [verdict["A"]["label"], *(entry["label"] for entry in verdict["entries"])]
-    if len(verdict["entries"]) != entry_count or any(label not in VERDICTS for label in labels):
-        raise ValueError(f"expected {entry_count} entries with labels in {VERDICTS}")
+    indexes = [entry.get("index") for entry in verdict["entries"]]
+    if indexes != list(range(entry_count)) or any(label not in VERDICTS for label in labels):
+        raise ValueError(f"expected entries with indexes 0 to {entry_count - 1} in order, labels in {VERDICTS}")
     return verdict
 
 
