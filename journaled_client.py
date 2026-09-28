@@ -7,6 +7,7 @@ request body the client sends, built by the same function, byte for byte. Only o
 repositories may be journaled, because a request carries their code.
 """
 
+import base64
 import json
 import sys
 import urllib.request
@@ -53,20 +54,25 @@ def request_body(model: str, state: Mapping, questions: Mapping) -> bytes:
 
 
 class JevHttpClient:
-    def __init__(self, model: str = LATEST_JEV) -> None:
+    """`providers` is the Evals helper module (credential, endpoint, POST); loaded from the checkout by default."""
+
+    def __init__(self, model: str = LATEST_JEV, providers=None) -> None:
         self.model = model
-        self._key = _providers().credential("TYPESAFE_API_KEY", KEY_FILE)
+        self._providers = providers or _providers()
+        self._key = self._providers.credential("TYPESAFE_API_KEY", KEY_FILE)
 
     def ask(self, state: Mapping, questions: Mapping) -> JevResponse:
         return self.parse(self.send(state, questions))
 
     def send(self, state: Mapping, questions: Mapping) -> RawResponse:
-        """The exact response body bytes, with HTTP status and content type; nothing is parsed here."""
-        http = urllib.request.Request(_providers().JEV_URL, data=request_body(self.model, state, questions), headers={
+        """The exact response body bytes, with HTTP status and content type, and the exact request bytes
+        sent, so the answer store keeps the request as sent; nothing is parsed here."""
+        body = request_body(self.model, state, questions)
+        http = urllib.request.Request(self._providers.JEV_URL, data=body, headers={
             "Content-Type": "application/json", "Authorization": "Bearer " + self._key})
         received = {}
-        _providers().post_json(http, TIMEOUT_SECONDS, response_observer=received.update)
-        return RawResponse(received["body"], received["status"], received["content_type"])
+        self._providers.post_json(http, TIMEOUT_SECONDS, response_observer=received.update)
+        return RawResponse(received["body"], received["status"], received["content_type"], sent_body=body)
 
     def parse(self, raw: RawResponse) -> JevResponse:
         return response_from_raw(raw.json())
@@ -98,6 +104,12 @@ class EvalsJournal:
         received = _response_event(response) if response is not None else {"kind": "response", "attempt": FIRST_ATTEMPT,
                                                                             "status": None, "body": b""}
         self._exchanges.pop(request_id)({**received, "read_status": "failed", "read_error": error})
+
+
+def sent_bodies(path: Path) -> dict[str, bytes]:
+    """Request id (the request's hash) to the exact body bytes sent, for every request in a journal."""
+    return {event["request_id"]: base64.b64decode(event["request_body_base64"])
+            for event in map(json.loads, path.read_text().splitlines()) if event["kind"] == "request"}
 
 
 def _response_event(response: RawResponse) -> dict:

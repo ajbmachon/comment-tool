@@ -20,6 +20,7 @@ from jev_navigator.testing import ScriptedJevClient
 
 from comment_review import QuestionSet, stale_reask_checks
 from definition_fetch import Definitions
+from journaled_client import sent_bodies
 from sweep import HOLDS_WHAT_COMMENT_IS_ABOUT
 
 SEARCH_QUESTIONS = frozenset({"contains_target", "could_contain_target", "open_first", HOLDS_WHAT_COMMENT_IS_ABOUT.name})
@@ -50,23 +51,19 @@ def registered_question_sets(questions: QuestionSet) -> QuestionSets:
 
 def audit_journal(path: Path, sets: QuestionSets) -> None:
     """Raises unless every journaled request asked a registered question set or only search questions."""
-    for event in map(json.loads, path.read_text().splitlines()):
-        if event["kind"] != "request":
-            continue
-        questions = json.loads(base64.b64decode(event["request_body_base64"]))["questions"]
+    for request_id, body in sent_bodies(path).items():
+        questions = json.loads(body)["questions"]
         names = {qid.split("@")[0].split("#")[0] for qid in questions}
         if questions not in (sets.first, sets.reask) and not names <= SEARCH_QUESTIONS:
-            raise RowAuditError(f"journaled request {event['request_id'][:12]} asked an unregistered question set")
+            raise RowAuditError(f"journaled request {request_id[:12]} asked an unregistered question set")
 
 
 def journal_exchanges(path: Path) -> dict[str, dict]:
     """Request hash to its journaled state, questions and noul answers, for every complete 200 response."""
-    requests, exchanges = {}, {}
+    requests, exchanges = sent_bodies(path), {}
     for event in map(json.loads, path.read_text().splitlines()):
-        if event["kind"] == "request":
-            requests[event["request_id"]] = json.loads(base64.b64decode(event["request_body_base64"]))
-        elif event.get("response_status") == 200 and event.get("response_read_status") == "complete":
-            body = requests[event["request_id"]]
+        if event.get("response_status") == 200 and event.get("response_read_status") == "complete":
+            body = json.loads(requests[event["request_id"]])
             answers = json.loads(base64.b64decode(event["response_body_base64"]))["answers"]
             exchanges[event["request_id"]] = {"state": body["state"], "questions": body["questions"], "nouls": _nouls(answers)}
     return exchanges
