@@ -27,6 +27,7 @@ from classify import changed_lines, is_touched
 from comment_discovery import code_decision, found_comments
 from data_root import DATA
 from list_claims import list_claim_for
+from registered_rounds import ROUNDS
 from sample_round4 import REPOSITORIES, packet
 
 ROUND = DATA / "round6"
@@ -126,17 +127,18 @@ def draw() -> list[dict]:
             numbers[name] += 1
             case_id = f"{CASE_PREFIXES[name]}{numbers[name]:02d}"
             cases.append(round_packet(name, pull_request, case_id, merge, f.case.file, f.case.first_line))
-    _require_registered_shape(cases)
+    require_registered_draw(cases)
     return cases
 
 
-def _require_registered_shape(cases: list[dict]) -> None:
-    per_pull_request = Counter(case["pull_request"] for case in cases)
-    per_repository = Counter(case["provenance"]["repository"] for case in cases)
+def require_registered_draw(cases: list[dict]) -> None:
+    """Exactly 5 fresh comments from each registered pull request, in its registered repository and merge
+    commit, under exactly the registered case ids, with no comment twice."""
+    drawn = Counter((c["provenance"]["repository"], c["pull_request"], c["provenance"]["commit"]) for c in cases)
     comments = {(c["provenance"]["commit"], c["provenance"]["path"], c["provenance"]["comment_lines"][0]) for c in cases}
-    shape = (len(per_pull_request), set(per_pull_request.values()), len(cases), set(per_repository.values()), len(comments))
-    if shape != (len(PULL_REQUESTS), {PER_PULL_REQUEST}, 30, {15}, 30):
-        raise SampleError(f"the draw is not 6 pull requests x 5 fresh comments, 15 per repository, 30 unique: {shape}")
+    registered = dict.fromkeys(PULL_REQUESTS, PER_PULL_REQUEST)
+    if dict(drawn) != registered or [c["case_id"] for c in cases] != list(ROUNDS["round6"].case_ids) or len(comments) != len(cases):
+        raise SampleError(f"the draw is not the registered 6 pull requests x 5 fresh comments: {dict(drawn)}")
 
 
 def _sha256(path: Path) -> str:
