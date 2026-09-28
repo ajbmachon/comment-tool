@@ -5,7 +5,8 @@ The entry point for a calling agent. The tool only classifies; the caller acts o
 directives and commented-out code, Jev answers the rest, and rule A composes the action. With
 `--diff <base>`, a comment is in scope when its own lines or the code it describes hold a line the
 diff changed between the merge base and `<commit>`; a pure deletion counts as changing the lines on
-both sides of it. Only source files are read (`sweep.source_files`: Python and TypeScript, no tests
+both sides of it. Comments in a file the diff deletes are out of scope: a deleted comment needs no
+action. Only source files are read (`sweep.source_files`: Python and TypeScript, no tests
 or generated code). Rows go to stdout, one per line; a summary goes to stderr. Every Jev exchange is
 journaled in `<journal dir>`, so only our own repositories can be classified.
 usage: uv run python classify.py \

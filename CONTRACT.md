@@ -16,7 +16,7 @@ uv run python classify.py <repository> <commit> <journal dir> --files <path> ...
 uv run python classify.py <repository> <commit> <journal dir> --diff <base>
 ```
 
-With `--diff`, only the comments a change touches are classified: a comment whose own lines, or the code it describes, hold a line changed between the merge base of `<base>` and `<commit>`. Only Python and TypeScript source files are read, never tests or generated code. A summary goes to stderr. Every Jev exchange is journaled in `<journal dir>`, so only our own repositories (Heedvane and analysis-engine) can be classified.
+With `--diff`, only the comments a change touches are classified: a comment whose own lines, or the code it describes, hold a line changed between the merge base of `<base>` and `<commit>`. Comments in a file the diff deletes are out of scope, because a deleted comment needs no action. Only Python and TypeScript source files are read, never tests or generated code. A summary goes to stderr. Every Jev exchange is journaled in `<journal dir>`, so only our own repositories (Heedvane and analysis-engine) can be classified.
 
 ## How to read a row
 
