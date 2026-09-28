@@ -18,10 +18,9 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import compose
-from comment_facts import facts_of
+from comment_discovery import classified_facts
 from comment_review import question_set
 from data_root import DATA
-from extract_cases import comment_prefix
 from journaled_client import journaled_judge, sent_bodies
 from run_round4 import ROUND4_QUESTIONS
 from sweep import COMMENT_WORKERS
@@ -46,7 +45,7 @@ def state_bytes(state: dict) -> bytes:
 def lib_escalations() -> list[dict]:
     states = sent_states(LIB / "journal.jsonl")
     rows = [json.loads(line) for path in sorted(glob.glob(str(LIB / "apps-*.jsonl"))) for line in Path(path).read_text().splitlines()]
-    return [{"source": "lib sweep", "location": row["location"], "comment": row["comment"],
+    return [{"source": "lib sweep", "location": row["location"], "comment": row["comment"], "kind": row["kind"],
              "settled_by_search": row["decided_by"] == "jev+rule after find_code",
              "state": states[row.get("first_answer", row)["request_sha256"]]}
             for row in rows if "search" in row]
@@ -71,11 +70,16 @@ def require_sent_states(journal_path: Path, rows: list[dict], packets: list[dict
             raise SentStateMismatchError(f"{row['location']}: the request did not carry the state as sent")
 
 
+def packet_facts(stored: dict) -> dict:
+    """Preserve lib classifications; round-3 packets predate doc-comment discovery."""
+    path = stored["location"].rsplit(":", 1)[0]
+    return classified_facts(stored["comment"], path, stored.get("kind"))
+
+
 def gated(judge, questions, stored: dict) -> dict:
     answers = judge.ask_all(stored["state"], checks=questions.checks, picks=questions.picks, scores=questions.scores)
     p = {name: result.probability for name, result in answers.checks.items()}
-    path = stored["location"].rsplit(":", 1)[0]
-    facts = {**facts_of(stored["comment"], comment_prefix(path)), "doc_comment": False}
+    facts = packet_facts(stored)
     return {key: stored[key] for key in ("source", "location", "settled_by_search")} | {
         "request_sha256": answers.request_sha256, "probabilities": p,
         "escalation_reasons": compose.escalation_reasons(p, facts), "searched_under_gate": compose.search_could_settle(p)}

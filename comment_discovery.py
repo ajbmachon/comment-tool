@@ -34,8 +34,13 @@ def _case(block: CommentBlock) -> CommentCase:
     text = comment_text(block)
     file = block.span.file
     language = "python" if file.endswith(".py") else "typescript"
-    facts = {**facts_of(text, comment_prefix(file)), "doc_comment": block.kind in DOC_KINDS}
+    facts = classified_facts(text, file, block.kind)
     return CommentCase(file, block.span.start, block.span.end, text, language, facts)
+
+
+def classified_facts(text: str, file: str, kind: str | None) -> dict:
+    """Facts for a discovered or replayed comment, preserving its parser classification."""
+    return {**facts_of(text, comment_prefix(file)), "doc_comment": kind in DOC_KINDS}
 
 
 def comment_text(block: CommentBlock) -> str:

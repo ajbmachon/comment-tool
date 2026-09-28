@@ -43,3 +43,28 @@ def test_a_request_that_carried_the_sent_state_passes(tmp_path):
     path, request_hash = journal_with(tmp_path, SENT_STATE)
 
     require_sent_states(path, [{"location": "a.ts:1", "request_sha256": request_hash}], [{"state": SENT_STATE}])
+
+
+@pytest.mark.parametrize("kind, expected", [("jsdoc", "rewrite"), ("block", "remove")])
+def test_gate_replay_preserves_the_sweeps_comment_kind(tmp_path, monkeypatch, kind, expected):
+    import json
+
+    import gate_first_answers
+    from comment_review import question_set
+    from gate_exact_compare import comment_facts, verdicts
+    from run_round4 import ROUND4_QUESTIONS
+
+    _, request_hash = journal_with(tmp_path, SENT_STATE)
+    row = {
+        "location": "example.ts:1", "kind": kind, "comment": "/** Obvious noise. */",
+        "decided_by": "escalated", "search": {}, "request_sha256": request_hash,
+    }
+    (tmp_path / "apps-example.jsonl").write_text(json.dumps(row) + "\n")
+    monkeypatch.setattr(gate_first_answers, "LIB", tmp_path)
+    questions = question_set(json.loads(ROUND4_QUESTIONS.read_text()))
+    probabilities = {check.name: 0.05 for check in questions.checks}
+    probabilities["is_noise"] = 0.95
+
+    replay_facts = comment_facts()[row["location"]]
+
+    assert verdicts(probabilities, replay_facts)["action"] == expected

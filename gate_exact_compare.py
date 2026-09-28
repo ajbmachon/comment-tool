@@ -12,10 +12,8 @@ import json
 from collections import Counter, defaultdict
 
 import compose
-from comment_facts import facts_of
 from data_root import DATA
-from extract_cases import comment_prefix
-from gate_first_answers import lib_escalations
+from gate_first_answers import lib_escalations, packet_facts
 
 MOVED = 0.10
 
@@ -27,8 +25,7 @@ def rows(name: str) -> dict[str, dict]:
 
 def comment_facts() -> dict[str, dict]:
     """Location to the comment's code facts, as the gate replay computed them."""
-    return {packet["location"]: {**facts_of(packet["comment"], comment_prefix(packet["location"].rsplit(":", 1)[0])),
-                                 "doc_comment": False} for packet in lib_escalations()}
+    return {packet["location"]: packet_facts(packet) for packet in lib_escalations()}
 
 
 def verdicts(p: dict, facts: dict) -> dict:
