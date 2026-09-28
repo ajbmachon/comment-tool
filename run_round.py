@@ -1,40 +1,42 @@
-"""Run the tool, as `classify.py` runs it, on one round of sampled comments.
+"""Run the tool, as `classify.py` runs it, on one registered round.
 
-Before any Jev call every packet is rebuilt from git objects and compared with `<round dir>/cases.jsonl`,
-the packet the Sol labels are given; one difference stops the run. Each comment goes through
-`sweep.review_found`: the first answer (with the list-claim question when the list check fires), the
-definition fetch before "fix stale comment", the list entries, the search only where the gate allows
-it, and the rewrite job of a decided rewrite. Every exchange is journaled.
-usage: run-slot -- uv run --project <jev-navigator> --extra typesafe python run_docs.py <round dir> <questions.json>
+Before any Jev call, `frozen_round.verify` checks the round against its registration: the repository's
+sources, the exact question file, the cases and every case record rebuilt in full from git objects, the
+library commit, the Python version and the secret-scan receipt; one difference stops the run. Each comment
+then goes through `sweep.review_found`: the first answer, the definition fetch before "fix stale comment",
+the search only where the gate allows it, and the rewrite job of a decided rewrite. Every exchange is
+journaled. The rows are written to `pass.jsonl.partial` and renamed to `pass.jsonl` only when all
+registered comments are done, so a partial run never looks complete.
+usage: uv run python run_round.py <round name>      (the round folder under data_root.DATA)
 """
 
 import json
+import os
 import sys
-from pathlib import Path
 
 from comment_discovery import FoundComment
-from comment_review import MEASURED_CONTEXT, comment_state, question_set
+from comment_review import question_set
+from data_root import DATA
+from frozen_round import rows_exactly, verify
 from journaled_client import journaled_judge
 from run_round4 import case_of, index_of
 from sweep import review_found
 
 
 def main() -> None:
-    round_dir, questions_path = Path(sys.argv[1]), Path(sys.argv[2])
-    raws = [json.loads(line) for line in (round_dir / "cases.jsonl").read_text().splitlines()]
-    indexes = {raw["case_id"]: index_of(raw) for raw in raws}
-    differing = [raw["case_id"] for raw in raws
-                 if comment_state(case_of(raw), *MEASURED_CONTEXT(indexes[raw["case_id"]], case_of(raw))) != raw["state"]]
-    print(f"packets equal to the labelled ones: {len(raws) - len(differing)} of {len(raws)}", flush=True)
-    if differing:
-        sys.exit(f"refusing to ask Jev: packets differ for {differing}")
-    questions = question_set(json.loads(questions_path.read_text()))
-    judge = journaled_judge(round_dir, {raw["provenance"]["repository"] for raw in raws})
-    with (round_dir / "pass.jsonl").open("w") as passes:
-        for raw in raws:
-            row = review_found(indexes[raw["case_id"]], judge, FoundComment(case_of(raw), raw["kind"]), questions)
-            passes.write(json.dumps({"case_id": raw["case_id"], **row}) + "\n")
-            print(raw["case_id"], row["action"], row["decided_by"], flush=True)
+    round_dir = DATA / sys.argv[1]
+    manifest = verify(round_dir)
+    raws = rows_exactly(round_dir / "cases.jsonl", manifest.case_ids)
+    questions = question_set(manifest.questions())
+    judge = journaled_judge(round_dir, {raw["provenance"]["repository"] for raw in raws.values()})
+    partial = round_dir / "pass.jsonl.partial"
+    with partial.open("w") as passes:
+        for case_id in manifest.case_ids:
+            raw = raws[case_id]
+            row = review_found(index_of(raw), judge, FoundComment(case_of(raw), raw["kind"]), questions)
+            passes.write(json.dumps({"case_id": case_id, **row}) + "\n")
+            print(case_id, row["action"], row["decided_by"], flush=True)
+    os.replace(partial, round_dir / "pass.jsonl")
     print(f"Jev comment requests {judge.calls}")
 
 
