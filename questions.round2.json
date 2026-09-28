@@ -1,0 +1,256 @@
+{
+  "code_is_hard_to_follow": {
+    "type": "noul",
+    "instructions": "Is the code in `code.before_comment` and `code.after_comment` hard to follow for a developer reading it without any comment?",
+    "criteria": {
+      "true": {
+        "what": "Reading only the code, a developer would struggle to see what it does or why it is shaped this way: dense expressions, non-obvious ordering, indirect control flow, or unusual workarounds.",
+        "not_for": "Code whose names and statements make its behavior plain, however long it is.",
+        "examples": [
+          "`mask = (x & -x) - 1`",
+          "a loop that deletes list items while walking the indexes backwards"
+        ]
+      },
+      "false": {
+        "what": "A developer reading only the code can see what it does and why.",
+        "examples": [
+          "`total = sum(item.price for item in items)`"
+        ]
+      }
+    }
+  },
+  "explains_how_or_why": {
+    "type": "noul",
+    "instructions": "Does `comment.text` explain how the code in `code.before_comment` and `code.after_comment` works, or why it is written this way?",
+    "criteria": {
+      "true": {
+        "what": "`comment.text` describes the mechanism of the adjacent code or the reason for its shape, beyond naming what it is.",
+        "not_for": "Titles or labels, and statements about unrelated code.",
+        "examples": [
+          "`# Walk backwards so deleting an item does not shift the indexes still to visit.`"
+        ]
+      },
+      "false": {
+        "what": "`comment.text` does not describe how the adjacent code works or why it is written this way.",
+        "examples": [
+          "`# helpers`"
+        ]
+      }
+    }
+  },
+  "states_hidden_rule": {
+    "type": "noul",
+    "instructions": "Does `comment.text` state a rule or warning that the adjacent code does not show: a constraint, a required order, a money or security consequence, or how an external system behaves?",
+    "criteria": {
+      "true": {
+        "what": "`comment.text` names a condition a change must respect, or a consequence of breaking it, that cannot be read from `code.before_comment` or `code.after_comment`.",
+        "not_for": "Rules the code itself enforces visibly, such as an explicit check with a clear error message.",
+        "examples": [
+          "`// Must run before the charge call: the provider bills twice if the idempotency key is set later.`"
+        ]
+      },
+      "false": {
+        "what": "`comment.text` states no constraint, ordering, consequence or external behavior beyond what the adjacent code shows.",
+        "examples": [
+          "`// Load the user` above `const user = await loadUser(id)`"
+        ]
+      }
+    }
+  },
+  "teaches_needed_knowledge": {
+    "type": "noul",
+    "instructions": "Does `comment.text` teach domain or platform knowledge that someone needs to change the adjacent code safely?",
+    "criteria": {
+      "true": {
+        "what": "`comment.text` explains how a business domain, a library, a protocol, a file format or a platform works, where that knowledge matters for editing the adjacent code.",
+        "not_for": "Knowledge unrelated to changing the adjacent code, and descriptions of the code itself.",
+        "examples": [
+          "`# CSV fields may contain newlines inside quotes, so rows cannot be split on line breaks.`"
+        ]
+      },
+      "false": {
+        "what": "`comment.text` teaches no domain or platform knowledge that matters for changing the adjacent code.",
+        "examples": [
+          "`# Parse each row` above `for row in reader:`"
+        ]
+      }
+    }
+  },
+  "points_to_owner": {
+    "type": "noul",
+    "instructions": "Does `comment.text` point to the place that owns a rule, such as a spec, decision record, owner document or source file, instead of copying the rule's full text?",
+    "criteria": {
+      "true": {
+        "what": "`comment.text` names a document, path, link or module as the owner of a rule or reasoning that it does not restate in full.",
+        "not_for": "Bare ticket or pull request numbers, and comments that copy the full rule and also cite its source.",
+        "examples": [
+          "`# Retention follows docs/policies/data-retention.md; change it there first.`"
+        ]
+      },
+      "false": {
+        "what": "`comment.text` names no owning document or file, or it copies the rule in full.",
+        "examples": [
+          "`# Keep customer exports for 30 days, then delete them.`"
+        ]
+      }
+    }
+  },
+  "only_restates_code": {
+    "type": "noul",
+    "instructions": "Does `comment.text` only repeat what the adjacent code already says through its names, types and statements?",
+    "criteria": {
+      "true": {
+        "what": "Every statement in `comment.text` can be read directly from `code.before_comment` or `code.after_comment`.",
+        "not_for": "A comment where any statement adds a reason, constraint or fact the code does not show.",
+        "examples": [
+          "`# Increment the counter` above `count += 1`"
+        ]
+      },
+      "false": {
+        "what": "At least one statement in `comment.text` says something the adjacent code does not.",
+        "examples": [
+          "`# Counted even on failure so the retry budget still shrinks.` above `count += 1`"
+        ]
+      }
+    }
+  },
+  "has_time_reference": {
+    "type": "noul",
+    "instructions": "Does `comment.text` tell history instead of describing the code as it is now: an earlier version or behavior, an incident story, or a decision credited to a person, chat or meeting?",
+    "criteria": {
+      "true": {
+        "what": "At least one sentence in `comment.text` retells what the code used to do, what happened that led to it, or who decided or asked for it.",
+        "not_for": "A bare date or ticket number without a retold story, and present-tense durations such as a timeout or retention period.",
+        "examples": [
+          "`# This used to call the API twice; after the outage we cache it.`",
+          "`// As agreed in chat, keep the fallback off.`"
+        ]
+      },
+      "false": {
+        "what": "`comment.text` describes only how the code behaves now and why.",
+        "examples": [
+          "`# Tokens expire after 15 minutes, so refresh before each batch.`"
+        ]
+      }
+    }
+  },
+  "is_noise": {
+    "type": "noul",
+    "instructions": "Is `comment.text` only a title or group label naming the code that follows?",
+    "criteria": {
+      "true": {
+        "what": "Apart from divider characters, `comment.text` is a heading or label that names the code after it and says nothing else.",
+        "not_for": "A heading followed by sentences that explain rules, reasons or knowledge.",
+        "examples": [
+          "`# ---- helpers ----`",
+          "`// form fields` above a list of form state variables"
+        ]
+      },
+      "false": {
+        "what": "`comment.text` contains at least one statement beyond naming the code that follows.",
+        "examples": [
+          "`# Helpers here must not touch the database; they run in the browser.`"
+        ]
+      }
+    }
+  },
+  "contradicts_code": {
+    "type": "noul",
+    "instructions": "Does `comment.text` say something that the code in `code.before_comment` and `code.after_comment` contradicts?",
+    "criteria": {
+      "true": {
+        "what": "A statement in `comment.text` about a value, name, order, condition or behavior disagrees with what the shown code does.",
+        "not_for": "Statements about code that is not shown, which cannot be checked here.",
+        "examples": [
+          "`# Retry five times` above `for attempt in range(3):`"
+        ]
+      },
+      "false": {
+        "what": "Every statement in `comment.text` that the shown code can confirm or refute agrees with it, or none can be checked against it.",
+        "examples": [
+          "`# Retry three times` above `for attempt in range(3):`"
+        ]
+      }
+    }
+  },
+  "name_would_replace": {
+    "type": "noul",
+    "instructions": "Would renaming something in the adjacent code to a better name than it has now, or extracting a small named function, say everything `comment.text` says?",
+    "criteria": {
+      "true": {
+        "what": "The adjacent code does not yet carry the comment's meaning in its names, and a clearer new name or an extracted function would carry all of it, making the comment unnecessary.",
+        "not_for": "Comments whose meaning the current names already carry, and comments with a reason, warning, history or knowledge no name can hold.",
+        "examples": [
+          "`# seconds until the session expires` above `t = 900`, which `SESSION_EXPIRY_SECONDS = 900` would say"
+        ]
+      },
+      "false": {
+        "what": "The current names already carry the comment's meaning, or some of its meaning cannot fit in a name.",
+        "examples": [
+          "`# Dispatch` above `def dispatch(...)`, whose name already says it",
+          "`# 900 because the identity provider revokes tokens after 15 minutes`"
+        ]
+      }
+    }
+  },
+  "addressed_to_agent": {
+    "type": "noul",
+    "instructions": "Is `comment.text` written as instructions to an AI coding agent rather than as information for any reader?",
+    "criteria": {
+      "true": {
+        "what": "`comment.text` addresses an AI agent or model directly, or gives it commands about how to behave while editing.",
+        "not_for": "Plain warnings to any reader, such as 'do not reorder these calls'.",
+        "examples": [
+          "`# AGENT: never edit this block; ask the user first.`"
+        ]
+      },
+      "false": {
+        "what": "`comment.text` informs any human or agent reader and does not address an AI agent.",
+        "examples": [
+          "`# Do not reorder: the second call reads what the first one writes.`"
+        ]
+      }
+    }
+  },
+  "change_risk_without_comment": {
+    "type": "score",
+    "instructions": "If `comment.text` were deleted, how much harder would the code in `code.before_comment` and `code.after_comment` be to change safely?",
+    "criteria": [
+      "No difference: the code alone tells a reader everything needed to change it.",
+      "Slightly slower: a reader would take longer to understand the code but would reach the right understanding.",
+      "Likely misunderstanding: a reader would probably form a wrong idea of what the code does or why.",
+      "Likely bug: a reader changing the code would probably break a rule or behavior the comment protects."
+    ]
+  },
+  "action": {
+    "type": "choice",
+    "instructions": "What should happen to `comment.text` so that the code in `code.before_comment` and `code.after_comment` is easiest to change safely?",
+    "criteria": {
+      "keep": "The comment stays as it is: it explains, warns, teaches or points to an owner, and it tells no history.",
+      "remove": "The comment is deleted: it only restates the code, only labels it, or has nothing a reader needs.",
+      "rewrite": "The comment keeps its useful content as a present-tense rule, dropping its history, dates, people or ticket numbers.",
+      "refactor_instead": "The comment becomes unnecessary once a name in the code is improved or a small piece is extracted.",
+      "link_owner": "The comment copies a rule that has an owning spec, decision record or owner document, and should point there instead of copying it.",
+      "fix_stale": "The comment contradicts the shown code, so the comment or the code must be corrected."
+    }
+  },
+  "refactor_instead.kind": {
+    "type": "choice",
+    "instructions": "Which change to the adjacent code would make `comment.text` unnecessary?",
+    "criteria": {
+      "rename_variable": "Giving a variable or field a clearer name would say what the comment says.",
+      "rename_function": "Giving a function or method a clearer name would say what the comment says.",
+      "extract_function": "Moving the commented lines into a small function with a telling name would say what the comment says.",
+      "extract_constant": "Replacing a literal value with a named constant would say what the comment says."
+    }
+  },
+  "link_owner.kind": {
+    "type": "choice",
+    "instructions": "What kind of document owns the rule that `comment.text` describes?",
+    "criteria": {
+      "spec": "A specification that defines the feature's required behavior.",
+      "adr": "An architecture decision record that explains a design choice.",
+      "owner_doc": "A reference or owner document for a subsystem, contract or policy."
+    }
+  }
+}

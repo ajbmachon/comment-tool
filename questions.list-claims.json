@@ -1,0 +1,42 @@
+{
+  "states_condition_for_every_entry": {
+    "type": "noul",
+    "instructions": "Does `comment.text` state at least one condition that every entry of the list in `code.after_comment` must meet?",
+    "criteria": {
+      "true": {
+        "what": "`comment.text` says that all entries of the shown list share at least one property, or that the list holds only entries of one kind, such as 'only read-only methods' or 'every timeout is in seconds'.",
+        "not_for": "A statement about the list as a whole (its length, its order, where it is used) and statements about code other than the shown list.",
+        "examples": [
+          "`# Only idempotent HTTP methods, so a retry is always safe.` above `SAFE = (\"GET\", \"HEAD\", \"PUT\")`"
+        ]
+      },
+      "false": {
+        "what": "`comment.text` states no condition that each entry must meet.",
+        "examples": [
+          "`# Checked in this order; the first match wins.` above a list of patterns"
+        ]
+      }
+    }
+  },
+  "entry_meets_stated_condition": {
+    "type": "noul",
+    "instructions": "Does the entry in `{item}.code` meet every condition that `comment.text` states for all entries of the list?",
+    "criteria": {
+      "true": {
+        "what": "Read as written, each condition in `comment.text` is true of the entry in `{item}.code`, with the code in `{item}.definitions` when the entry names other code.",
+        "not_for": "Whether the conditions are a good rule, and whether the entry is useful.",
+        "examples": [
+          "The comment says 'only read-only methods' and the entry is `\"GET\"`.",
+          "The comment says 'every timeout is in seconds' and the entry is `RETRY_TIMEOUT = 30`."
+        ]
+      },
+      "false": {
+        "what": "Read as written, the entry in `{item}.code` fails at least one condition that `comment.text` states for all entries.",
+        "examples": [
+          "The comment says 'only read-only methods' and the entry is `\"POST\"`.",
+          "The comment says 'every pattern matches a file name, never a folder' and the entry is `re.compile(r\"(^|/)build/\")`."
+        ]
+      }
+    }
+  }
+}
