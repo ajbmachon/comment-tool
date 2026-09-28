@@ -9,7 +9,7 @@ docstring) gets the module's exported or public names, and a package's modules, 
 declaration. Python is read with `ast`; TypeScript with the TypeScript compiler's parser from the
 repository's own `node_modules` (`ts_parse.mjs`), with no type check. `sweep.py` attaches the job to
 each decided rewrite; `main` rebuilds the jobs of stored rounds.
-usage: uv run --project <jev-navigator> python rewrite_packet.py <cases.jsonl> <pass.jsonl> <out.jsonl> [per repository]
+usage: uv run python rewrite_packet.py <cases.jsonl> <pass.jsonl> <out.jsonl> [per repository]
 """
 
 import ast

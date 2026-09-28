@@ -2,7 +2,7 @@
 location, kind, the route code gives it (kept, removed, or sent to Jev) and its facts. Two
 snapshots taken under different library versions show exactly which comments moved.
 
-usage: run-slot -- uv run --project <jev-navigator> python discovery_snapshot.py <repository> <commit> <parent dir> <out.jsonl>
+usage: uv run python discovery_snapshot.py <repository> <commit> <parent dir> <out.jsonl>
        python3 discovery_snapshot.py --compare <before.jsonl> <after.jsonl>
 """
 

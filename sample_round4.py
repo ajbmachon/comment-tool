@@ -4,7 +4,7 @@
 comments, at the round-3 commits, one per file, in a fixed hash order, from files no earlier round
 used. A comment qualifies when it is a whole-line comment code does not decide (the population the
 reference labels cover). Packets use the measured cut: the lines above and `code_described_by_comment`.
-usage: run-slot -- uv run --project <jev-navigator> python sample_round4.py > round4/cases.jsonl
+usage: uv run python sample_round4.py > round4/cases.jsonl
 """
 
 import hashlib

@@ -5,7 +5,7 @@ round-4 en-h09): the comment, the code it was shown with exactly as Jev saw it, 
 search fetched, in the order it fetched them. Sol labels the shown code and each place, one call per
 packet. It never sees a Jev answer, a search verdict or a stop probability.
 usage: python3 stop_labels.py build            (no model call; writes stop-labels/packets.jsonl)
-       run-slot -- python3 stop_labels.py label (15 Sol calls; writes stop-labels/labels.jsonl)
+       python3 stop_labels.py label (15 Sol calls; writes stop-labels/labels.jsonl)
 """
 
 import json

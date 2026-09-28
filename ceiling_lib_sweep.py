@@ -4,7 +4,7 @@ Each search's opened places come from the stored requests, in the order they wer
 the exact code Jev saw. `ceiling_curve` asks the sweep's stop question over the first 1, 2, ... of
 them, so the curve shows where more history stops changing the answer. Only searches that opened
 at least two places can show that. The stop question is asked live; nothing else is recomputed.
-usage: run-slot -- uv run --project <jev-navigator> --extra typesafe python ceiling_lib_sweep.py
+usage: uv run python ceiling_lib_sweep.py
 """
 
 import json

@@ -14,7 +14,7 @@ Names without a definition are found again with the current rule, from git only.
 post-freeze change (28.09.2026), a name imported from a package passes, so a list the stored run
 stopped at the definition check may now reach B, whose per-entry answers were never asked: it is
 shown as not scored rather than as the "nothing" its empty entries would give.
-usage: run-slot -- uv run --project <jev-navigator> python score_list_round.py
+usage: uv run python score_list_round.py
 """
 
 import json

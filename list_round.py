@@ -5,8 +5,8 @@ Six real comments the trigger fires on, from `list-round/candidates.jsonl` (foun
 a list where every entry meets the comment's condition (`COST_KEY_TO_CREDITS_KEY`) and a list made of
 names (`CATALOG_REFUSALS`); and three more in a fixed hash order. Each packet holds the first request's
 state and B's entries with their definitions, exactly as the tool builds them.
-usage: run-slot -- uv run --project <jev-navigator> --extra typesafe python list_round.py sample > list-round/cases.jsonl
-       run-slot -- uv run --project <jev-navigator> --extra typesafe python list_round.py run
+usage: uv run python list_round.py sample > list-round/cases.jsonl
+       uv run python list_round.py run
 """
 
 import hashlib

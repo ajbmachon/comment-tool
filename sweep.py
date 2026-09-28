@@ -19,7 +19,7 @@ exchange is journaled and every request kept (own repositories only). The tool o
 decided "rewrite" carries a `rewrite_job` (what the comment documents, the old comment and why, from
 `rewrite_packet`) for the calling agent or another system, which writes the new comment.
 
-usage: run-slot -- uv run --project <jev-navigator> --extra typesafe python sweep.py \
+usage: uv run python sweep.py \
          <repository> <commit> <parent dir> <out dir> [--only <unit> ...]
 """
 

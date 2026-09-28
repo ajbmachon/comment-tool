@@ -4,7 +4,7 @@ In the validation sample's hash order, skipping every file an earlier round used
 doc comment goes through `sweep.judged` until each repository has given `PER_REPOSITORY` decided
 rewrites or `MAX_DOCS` doc comments. Heedvane is read in `apps/web/src/lib` at the lib-sweep commit,
 the engine at the round-3 commit. Every exchange is journaled.
-usage: run-slot -- uv run --project <jev-navigator> --extra typesafe python rewrite_candidates.py
+usage: uv run python rewrite_candidates.py
 """
 
 import json

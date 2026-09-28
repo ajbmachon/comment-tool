@@ -3,7 +3,7 @@
 For each repository at its round-3 commit, every file whose comments use a quantifier word is read,
 and every comment on which `list_claims.list_claim_for` finds a list is printed with its entries and
 whether any entry is, or holds, a name.
-usage: run-slot -- uv run --project <jev-navigator> python list_candidates.py > <out.jsonl>
+usage: uv run python list_candidates.py > <out.jsonl>
 """
 
 import json

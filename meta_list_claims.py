@@ -3,7 +3,7 @@
 The tool runs once on en-h11 against a scripted client (A yes, so B is asked too), and both exact
 requests are written as review candidates: the first request with A added, and the batch of B.
 Intended uses for the other questions are taken, by question name, from the round-4 candidate.
-usage: run-slot -- uv run --project <jev-navigator> python meta_list_claims.py <out dir>
+usage: uv run python meta_list_claims.py <out dir>
 """
 
 import json

@@ -5,7 +5,7 @@ behind the described code's conditions, and the three stale questions are asked 
 in `code.elsewhere` (journaled in <out dir>). The answer key stays the round-4 rule on Sol's labels
 for the exact packet. The first run (`round4-definitions/`) pasted the definitions into the described
 code and re-asked every question; the current tool asks only the stale questions.
-usage: run-slot -- uv run --project <jev-navigator> --extra typesafe python rescore_definitions.py <out dir>
+usage: uv run python rescore_definitions.py <out dir>
 """
 
 import json

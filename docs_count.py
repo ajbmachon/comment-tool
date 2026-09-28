@@ -3,7 +3,7 @@
 For every doc comment `find_comments` keeps (`comment_discovery.DOC_KINDS`): its kind, whether it
 sits on a named function or class, and whether it names a checkable detail by the fixed mechanical
 rule in `multi_detail.py` (a stand-in for question 1, which is a Jev answer).
-usage: run-slot -- uv run --project <jev-navigator> python docs_count.py <repository> <commit> <parent dir>
+usage: uv run python docs_count.py <repository> <commit> <parent dir>
 """
 
 import sys

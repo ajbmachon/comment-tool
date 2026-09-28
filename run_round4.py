@@ -2,7 +2,7 @@
 
 Before any Jev call every packet is rebuilt from git objects and compared with `round4/cases.jsonl`,
 the packet the Sol labels are given; one difference stops the run. Every exchange is journaled.
-usage: run-slot -- uv run --project <jev-navigator> --extra typesafe python run_round4.py
+usage: uv run python run_round4.py
 """
 
 import json

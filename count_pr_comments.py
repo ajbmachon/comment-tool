@@ -7,7 +7,7 @@ apart. Each other comment costs one Jev request; a comment above a list literal 
 about may cost one more (the per-entry batch, asked only when Jev says the comment states a
 condition); further re-asks and searches happen only on escalation and are not counted here. Jev's
 time per request is read from the stored journals.
-usage: uv run --project <jev-navigator> --extra typesafe python count_pr_comments.py <repository>=<pr>:<merge commit> ...
+usage: uv run python count_pr_comments.py <repository>=<pr>:<merge commit> ...
 """
 
 import json

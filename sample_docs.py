@@ -6,7 +6,7 @@ every file in the case files named on the command line. A doc comment is any
 kind in `comment_discovery.DOC_KINDS` (JSDoc, docstring, declaration comment, file header).
 Packets use the tool's cut: the lines above, and the code the comment is about (for a function's
 docstring, the rest of the function).
-usage: run-slot -- uv run --project <jev-navigator> python sample_docs.py <id letter> [used cases.jsonl ...] > <round>/cases.jsonl
+usage: uv run python sample_docs.py <id letter> [used cases.jsonl ...] > <round>/cases.jsonl
        (the first doc round: `sample_docs.py d`; the second: `sample_docs.py e docs/cases.jsonl docs-rewrite/cases.jsonl`)
 """
 
