@@ -1,5 +1,7 @@
 # Comment-value tool: A vs B vs escalation (2026-09-28)
 
+The data files this report names by relative path (round folders, frozen records, labels, journals) live in `~/.claude/handoffs/effect-2026-09-25/comment-tool`, not in this repository.
+
 Andre, both readouts ran on all 32 comments. Code combining the yes/no answers (A) matched Sol on 22, and the action Jev picks directly (B) matched on 25. With escalation at 0.60, the tool decided 12 of 32 on its own and matched Sol on 11 of those 12. The other 20 were escalated, and those include 11 of the 12 comments where A or B was wrong.
 
 The harness would not let me write `comment-tool/REPORT.md`, since agents in my role must return findings as text. Everything below is the report; the data and scripts are in `~/.claude/handoffs/effect-2026-09-25/comment-tool/`.

@@ -8,7 +8,7 @@ diff changed between the merge base and `<commit>`; a pure deletion counts as ch
 both sides of it. Only source files are read (`sweep.source_files`: Python and TypeScript, no tests
 or generated code). Rows go to stdout, one per line; a summary goes to stderr. Every Jev exchange is
 journaled in `<journal dir>`, so only our own repositories can be classified.
-usage: uv run --project <jev-navigator> --extra typesafe python classify.py \
+usage: uv run python classify.py \
          <repository> <commit> <journal dir> (--files <path> ... | --diff <base>)
 """
 

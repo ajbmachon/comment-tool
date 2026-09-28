@@ -12,8 +12,8 @@ What `classify.py` prints, one JSON object per line on stdout, one per comment. 
 ## How to run it
 
 ```text
-uv run --project <jev-navigator> --extra typesafe python classify.py <repository> <commit> <journal dir> --files <path> ...
-uv run --project <jev-navigator> --extra typesafe python classify.py <repository> <commit> <journal dir> --diff <base>
+uv run python classify.py <repository> <commit> <journal dir> --files <path> ...
+uv run python classify.py <repository> <commit> <journal dir> --diff <base>
 ```
 
 With `--diff`, only the comments a change touches are classified: a comment whose own lines, or the code it describes, hold a line changed between the merge base of `<base>` and `<commit>`. Only Python and TypeScript source files are read, never tests or generated code. A summary goes to stderr. Every Jev exchange is journaled in `<journal dir>`, so only our own repositories (Heedvane and analysis-engine) can be classified.
