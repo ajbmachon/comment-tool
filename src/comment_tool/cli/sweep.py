@@ -66,7 +66,7 @@ NOT_SOURCE = re.compile(r"\.test\.|\.spec\.|_test\.py$|test-support|generated|\.
 MAX_UNIT_FILES = 300
 THREE_OUTCOMES = {Outcome.FOUND: "found", Outcome.STOP_RULE: "found", Outcome.NOTHING_LEFT: "searched_not_found",
                   Outcome.BUDGET: "not_yet_inspected", Outcome.UNSURE_ONLY: "not_yet_inspected",
-                  Outcome.SCOPE_INCOMPLETE: "not_yet_inspected"}
+                  Outcome.SCOPE_INCOMPLETE: "not_yet_inspected", Outcome.CANCELLED: "not_yet_inspected"}
 """A search over a scope with unparsed files never says the code is absent."""
 COMMENT_WORKERS = 6
 HOLDS_WHAT_COMMENT_IS_ABOUT = Check(
