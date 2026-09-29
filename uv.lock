@@ -63,7 +63,7 @@ wheels = [
 [[package]]
 name = "jev-navigator"
 version = "0.1.0"
-source = { git = "https://github.com/ajbmachon/jev-navigator#7a9c680b90d98ca2977d25ac7536d06d5d853d03" }
+source = { git = "https://github.com/ajbmachon/jev-navigator#a5e54064bdb00818197add0c555235c6c41a8fe5" }
 
 [[package]]
 name = "packaging"
