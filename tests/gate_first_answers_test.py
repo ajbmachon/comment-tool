@@ -5,7 +5,7 @@ import pytest
 from jev_navigator.judgments.journal import JournalRequest
 from jev_navigator.judgments.questions import request_sha256
 
-from comment_tool.journal.journaled_client import EvalsJournal
+from comment_tool.journal.journaled_client import ExchangeJournal
 from research.rounds.gate_first_answers import SentStateMismatchError, require_sent_states, sent_states
 
 pytestmark = pytest.mark.local
@@ -18,7 +18,7 @@ QUESTIONS = {"q": {"type": "noul"}}
 def journal_with(tmp_path, state: dict):
     path = tmp_path / "journal.jsonl"
     request_hash = request_sha256(state, QUESTIONS)
-    EvalsJournal(path, "run", {"heedvane"}).record_request(JournalRequest(request_hash, "jev-latest", state, QUESTIONS))
+    ExchangeJournal(path, "run", {"heedvane"}).record_request(JournalRequest(request_hash, "jev-latest", state, QUESTIONS))
     return path, request_hash
 
 
