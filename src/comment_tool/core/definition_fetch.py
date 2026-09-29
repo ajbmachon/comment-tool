@@ -245,8 +245,13 @@ def _declaration(repository: Path, commit: str, file: str, name: str) -> tuple[s
 
 
 def _resolved(repository: Path, commit: str, importer: str, specifier: str) -> str | None:
-    """The repository file `specifier` names; script files resolve aliases through their nearest tsconfig."""
-    return resolve_import(specifier, importer, _all_files(repository, commit), _script_paths(repository, commit, importer))
+    """The repository file `specifier` names; script files resolve aliases through their nearest tsconfig.
+
+    jev-navigator returns an `ImportFact` (path plus evidence); the path is what the
+    definition fetch needs.
+    """
+    fact = resolve_import(specifier, importer, _all_files(repository, commit), _script_paths(repository, commit, importer))
+    return fact.path if fact is not None else None
 
 
 def _script_paths(repository: Path, commit: str, importer: str) -> ScriptPaths | None:

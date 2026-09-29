@@ -248,16 +248,36 @@ def sent_bodies(path: Path) -> dict[str, bytes]:
 def journaled_judge(out: Path, repositories: set[str]) -> Judge:
     """A Judge whose every exchange is journaled in `out/journal.jsonl` and whose store keeps requests.
 
-    The client is jev-navigator's `TypeSafeJevClient` under `WireCompatClient`, configured
-    entirely by the environment: `TYPESAFE_DEFAULT_MODEL` names the decision model
-    (`jev-latest`, `drex-latest`, or one of our finetuned checkpoints) and `TYPESAFE_BASE_URL`
-    the service that answers.
+    The client is configured entirely by the environment: with `SYSTEM_ONE_ROUTES` set,
+    jev-navigator's route table answers — the first named route (Drex, Jev, a finetuned
+    checkpoint) is primary and each later one is the automatic fallback, every route with
+    exact-byte capture. Without routes, the single service named by `TYPESAFE_BASE_URL` /
+    `TYPESAFE_DEFAULT_MODEL` answers under `WireCompatClient`'s wire dialect handling.
     """
 
     load_env()
-    return Judge(WireCompatClient(),
+    from jev_navigator.adapters.routes import RoutedJevClient, routes_from_env
+
+    routes = routes_from_env()
+    client: WireCompatClient | _RouteDialect = WireCompatClient()
+    if routes:
+        client = _RouteDialect(RoutedJevClient(routes))
+    return Judge(client,
                  journal=ExchangeJournal(out / "journal.jsonl", out.name, repositories),
                  store=JsonlAnswerStore(out / "answers.jsonl", keep_requests=True))
+
+
+class _RouteDialect:
+    """The route table's failover under `WireCompatClient`'s dialect: criteria flattened to
+    strings before every route sees them (Drex requires it), responses decoded by jvn's
+    parser from the captured bytes."""
+
+    def __init__(self, routed) -> None:
+        self._routed = routed
+        self.model = routed.model
+
+    def ask(self, state, questions):
+        return self._routed.ask(state, flatten_criteria(questions))
 
 
 def _sha256(body: bytes) -> str:
