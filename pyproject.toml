@@ -8,10 +8,26 @@ dependencies = ["jev-navigator @ git+https://github.com/ajbmachon/jev-navigator"
 [dependency-groups]
 dev = ["pytest", "ruff", "ast-grep-cli"]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/comment_tool"]
+artifacts = ["**/*.mjs"]
+
 [tool.uv]
-package = false
+package = true
+
+[project.scripts]
+comment-tool = "comment_tool.cli.classify:main"
+comment-sweep = "comment_tool.cli.sweep:main"
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 python_files = ["*_test.py"]
 addopts = "-p no:cacheprovider"
 
