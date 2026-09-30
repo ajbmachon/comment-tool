@@ -32,16 +32,17 @@ from pathlib import Path
 
 from jev_navigator.directives.find_code import FindResult, Outcome, StopRule, find_code
 from jev_navigator.directives.places import place_for_line
-from jev_navigator.history import FETCHED
+from jev_navigator.history import FETCHED, HistoryTooLargeError
 from jev_navigator.index import tools
 from jev_navigator.index.code_index import CodeIndex
 from jev_navigator.index.spans import CodeSlice
-from jev_navigator.judgments.judge import Judge
+from jev_navigator.judgments.judge import CallCapReachedError, Judge
 from jev_navigator.judgments.questions import Check, Criterion
 
 import comment_tool.core.compose as compose
 from comment_tool.claims.list_claims import checked_list_claim, list_claim_for, with_list_claim_question
 from comment_tool.claims.rewrite_packet import rewrite_job
+from comment_tool.core import request_budget
 from comment_tool.core.comment_discovery import FoundComment, code_decision, found_comments
 from comment_tool.core.comment_review import (
     MEASURED_CONTEXT,
@@ -138,26 +139,59 @@ def _unproven(signature: str) -> bool:
     return ", candidate:" in signature or ", unresolved:" in signature
 
 
-def search_for_described_code(index: CodeIndex, judge: Judge, case: CommentCase) -> FindResult:
-    """One search; `find_code` runs it on its own scope of `judge`, so its budget counts only its calls."""
+def search_for_described_code(index: CodeIndex, judge: Judge, case: CommentCase) -> FindResult | None:
+    """One search; `find_code` runs it on its own scope of `judge`, so its budget counts only its
+    calls. None when the search could not be run at all, which is not a finding that the code is
+    absent anywhere: the places it did not read stay uninspected, and the caller decides."""
     start = [place_for_line(index, case.file, case.last_line, "comment")]
     stop_rule = StopRule(HOLDS_WHAT_COMMENT_IS_ABOUT, shared={"comment": {"text": case.text}}, sections=STOP_SECTIONS)
-    return find_code(index, judge, f"the code this comment describes: {case.text}", start,
-                     commit=index.commit, stop_rule=stop_rule)
+    try:
+        return find_code(index, judge, f"the code this comment describes: {case.text}", start,
+                         commit=index.commit, stop_rule=stop_rule)
+    except (HistoryTooLargeError, CallCapReachedError):
+        return None
 
 
 def reasked_on_elsewhere(index: CodeIndex, judge: Judge, case: CommentCase, questions: QuestionSet, row: dict,
                          extra: list[CodeSlice]) -> dict | None:
     """Only the stale questions, asked again with `extra` in `code.elsewhere`; every other answer
-    stays the first packet's. None when `extra` holds nothing the described code does not."""
+    stays the first packet's. None when `extra` holds nothing the described code does not.
+
+    Places that do not all fit in one request are asked in as many requests as they need, because
+    one place does not answer another place's question, and a packet above a route's request-token
+    limit is refused rather than answered. The lowest answer per question wins: a place that shows
+    the detail contradicts a place that hides it, and `stale_of` is the lowest of its three parts.
+    A place larger on its own than one request may be is escalated, never cut down."""
     before, after = MEASURED_CONTEXT(index, case)
-    new = tuple(piece for piece in extra if piece.text not in after.text)
+    new = [piece for piece in extra if piece.text not in after.text]
     if not new:
         return None
-    answers = judge.ask_all(comment_state(case, before, after, new), checks=stale_reask_checks(questions))
-    stale = {name: result.probability for name, result in answers.checks.items()}
-    reask = {"probabilities": stale, "request_sha256": answers.request_sha256, "elsewhere": [piece.source() for piece in new]}
-    return {**recomposed(row, {**row["probabilities"], **stale}, case), "stale_reask": reask, "first_answer": _first(row)}
+    checks = stale_reask_checks(questions)
+    units = [[piece] for piece in new]
+
+    def packet_of(pieces: list[CodeSlice]) -> dict:
+        return comment_state(case, before, after, tuple(pieces))
+
+    def too_big(packet: list[CodeSlice]) -> bool:
+        return not request_budget.packet_fits(judge, packet_of(list(packet)))
+
+    packets = request_budget.packets_fitting(judge, units, too_big)
+    if packets is None:
+        too_big_here = [unit[0] for unit in units if too_big(list(unit))]
+        return with_escalation(row, [f"staleness is not checkable on this evidence: {len(too_big_here)} "
+                                    f"{'place' if len(too_big_here) == 1 else 'places'} of it will not "
+                                    "fit a request this run's routes accept"])
+    answers: dict[str, float] = {}
+    digests: list[str] = []
+    for packet in packets:
+        asked = judge.ask_all(packet_of(packet), checks=checks)
+        answers = request_budget.lowest_answers(answers, {name: result.probability
+                                                          for name, result in asked.checks.items()})
+        digests.append(asked.request_sha256)
+    reask = {"probabilities": answers, "request_sha256": digests, "packets": len(packets),
+             "elsewhere": [piece.source() for piece in new]}
+    return {**recomposed(row, {**row["probabilities"], **answers}, case), "stale_reask": reask,
+            "first_answer": _first(row)}
 
 
 def checked_stale(index: CodeIndex, judge: Judge, case: CommentCase, questions: QuestionSet, row: dict) -> dict:
@@ -187,6 +221,10 @@ def judged(index: CodeIndex, judge: Judge, case: CommentCase, questions: Questio
     if not compose.search_could_settle(row.get("first_answer", row)["probabilities"]):
         return {**row, "decided_by": "escalated"}
     result = search_for_described_code(index, judge, case)
+    if result is None:
+        return {**with_escalation(row, ["the search for the described code could not be run: its evidence "
+                                       "outgrew the input budget this run's routes accept"]),
+                "search": {"outcome": "not_yet_inspected", "unfinished": True}, "decided_by": "escalated"}
     search = search_record(result)
     first = row.get("first_answer") or _first(row)
     reasked = reasked_on_elsewhere(index, judge, case, questions, row, [visit.code for visit in result.found])
