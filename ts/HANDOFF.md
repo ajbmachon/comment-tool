@@ -1,6 +1,28 @@
 # Effect Decision + Discern rule A spike
 
-## Outcome
+## Contents
+
+- [Availability and ownership](#availability-and-ownership)
+- [Historical replay outcome](#historical-replay-outcome)
+- [What was built](#what-was-built)
+- [Comparison table](#comparison-table)
+- [Exact commands and results](#exact-commands-and-results)
+- [Bugs found and fixed in the spike](#bugs-found-and-fixed-in-the-spike)
+- [Live integration](#live-integration)
+- [What Discern made easier](#what-discern-made-easier)
+- [What Discern made harder](#what-discern-made-harder)
+- [System One rules the TypeScript path cannot express natively yet](#system-one-rules-the-typescript-path-cannot-express-natively-yet)
+- [Verdict](#verdict)
+
+## Availability and ownership
+
+This is an experimental spike. It is not a deployed Heedvane feature or an adoption decision for
+Discern. Its original base is `b38b2c88b25f33f4d93f387d01ca29a66b63765a`; the retained compatibility
+patch is still required. The live entry uses the original Python request and typed provider
+observations, then delegates action, escalation and reasons to `src/policy.ts::evaluateCase`.
+Python `compose.py` remains the independent comparison owner.
+
+## Historical replay outcome
 
 The TypeScript replay reaches the Python comment tool's final readout on all 120 labelled comments, using stored answers only:
 
@@ -45,7 +67,8 @@ Every mismatch: none. `output/comparison.json` contains `"mismatches": []`.
 
 ## Exact commands and results
 
-All tests, type checks, and comparison jobs used the machine-wide scheduler required by the repository instructions.
+The following are the original replay receipts. They used the then-required machine scheduler;
+current jobs run directly under `../RIGOR.md` rule 8.
 
 ```text
 npm run prepare
@@ -98,6 +121,51 @@ Two Discern 0.5.0 integration failures were real library-boundary defects, not p
 
 These fixes should be proposed upstream before treating the dependency as production-ready.
 
+## Live integration
+
+`../discern_live_pilot.py` selects one original request from its existing provider journal, checks
+the canonical state/question hash and exact wire bytes, and has a free `prepare` mode. Its explicit
+`live` mode asks the unchanged original questions and requested model through the existing
+`journaled_client.py`, native Judge, final secret refusal, Evals journal and full answer store.
+The journal owns exact response retention before parsing. A malformed body, parser failure,
+HTTP error or incomplete read keeps its bytes and original cause. The adapter refuses missing
+requested answers; no fallback probability fills one.
+
+`src/live-pilot.ts` invokes that Python owner, decodes the observation using Effect Schema and
+calls `evaluateCase`. It writes the request identity, concrete served model, probabilities, actual
+outcome, artifact hashes and measured timings into one receipt. It does not copy the policy or
+send the facts-only TypeScript question schema to Jev. The original structured criteria are
+preserved; the speculative Choice and Score observations remain recorded and do not override
+Rule A.
+
+Run from `ts/`, with the original registered inputs and a fresh output directory:
+
+```text
+uv run --no-sync python ../discern_live_pilot.py prepare --journal <original-journal.jsonl> --request-id <canonical-sha256>
+node --import tsx src/live-pilot.ts --journal <original-journal.jsonl> --request-id <canonical-sha256> --case-id <original-case-id> --cases <original-cases.jsonl> --out <fresh-directory> --receipt <receipt.json>
+```
+
+The normal live invocation uses the provider URL owned by the Evals helpers. `--endpoint` selects
+the licensed local HTTP substitute for boundary tests. Tests do not count as live inference.
+They use the actual Python executable, journal, store, parser, TS decoder and reducer, including
+exact wire identity and the full 18-answer record. The numeric policy tests remain the primary
+proof for thresholds; the new boundary suite covers executable transport and failure retention.
+
+Current local proof: 13 Python boundary/journal cases and all 9 TS cases pass, with zero TS skips;
+type checking, Ruff and the normal 43-case non-local Python gate pass. A real subprocess killed
+before the first response JSON parse reopens the exact journaled body; the original transport
+fails that regression. Removing transport-failure rejection is caught by all three selected
+HTTP/read cases, and disconnecting `evaluateCase` fails the actual CLI outcome assertion. The one original `hv-d01` provider attempt remains pending
+coordinator source admission. It will compare fresh Python composition over the same new answers
+with the surviving TS owner, and retain any negative outcome without retry or tuning. Its request
+design review has no grounded atomicity/semantic contrast score and no automated TS consumer
+coverage. This pilot cannot establish calibration, semantic accuracy or adoption readiness.
+
+The previous isolated local-HTTP proof retains its corrected mutation result of 6 caught out of 7.
+The undetected `hv-d01` stale-answer probe did not change the outcome because another minimum
+prerequisite stayed lower. That is an invalid expected-outcome-change probe, not a reducer defect
+or a complete mutation admission. Its historical source and failed evidence remain preserved.
+
 ## What Discern made easier
 
 - The rule reads like its semantics: `and` implements min-style prerequisites, `or` implements max-style alternatives, and ordered `when` cases preserve Python branch priority.
@@ -116,7 +184,7 @@ These fixes should be proposed upstream before treating the dependency as produc
 ## System One rules the TypeScript path cannot express natively yet
 
 - Effect probability criteria are `{ true: string, false: string }`; they cannot carry our structured `what`, `not_for`, and `examples` objects. Flattening is a new question version and must be re-measured before a live TypeScript Jev call.
-- Effect/Discern do not retain the exact sent request bytes, served model id, or a question-wording hash. A live path still needs the planned transport wrapper for journalling, final secret refusal, served-model capture, and question-version ownership.
+- Effect/Discern do not natively retain the exact sent request bytes, served model id, or a question-wording hash. The live pilot delegates those facts to the existing Python transport/journal owner instead of introducing another transport wrapper.
 - Discern's content address is not the comment tool's established request identity. Cross-language replay needs the explicit adapter built here, or a shared future journal contract.
 - Discern does not natively emit every uncertain path quantity and its user-facing reason in one policy result. The deterministic reason readout remains necessary for parity.
 
@@ -124,4 +192,7 @@ These fixes should be proposed upstream before treating the dependency as produc
 
 Effect Decision plus Discern is a good architectural base for native Jev workflows: code owns facts and execution, model judgments remain typed observations, uncertainty is explicit, and the provider can be replaced cleanly for replay. This spike demonstrates exact end-to-end parity over a nontrivial composed rule rather than only API ergonomics.
 
-Discern 0.5.0 itself is not yet a safe unpatched production dependency. Both failures found here sit on core advertised paths—Effect rc.118 loading and deterministic short-circuiting. If those are fixed upstream, and the live TypeSafe transport gets the required journal/served-model/secret/question-version wrapper, this is a substantially better base than hand-written `DecisionModel.decide` branching. Until then, it is a promising policy layer with a small but real integration-risk budget, not a drop-in foundation.
+Discern 0.5.0 itself is not an admitted unpatched production dependency. Both historical failures
+sit on core advertised paths: Effect rc.118 loading and deterministic short-circuiting. The local
+Python-to-TS integration proof is useful evidence of wiring; the original live pilot and upstream
+dependency repairs remain separate from any adoption decision.
