@@ -41,10 +41,10 @@ def readout_a(answers: dict, facts: dict) -> str:
 
 
 def main() -> None:
-    sol = rows("sol-labels.jsonl")
-    earlier = rows("sol-labels.v3-questions-partial.jsonl")
-    draft = json.loads(DATA / "labels.provisional.json".read_text())["labels"]
-    facts = {c["case_id"]: c["code_facts"] for c in map(json.loads, DATA / "cases.jsonl".read_text().splitlines())}
+    sol = rows(str(DATA / "sol-labels.jsonl"))
+    earlier = rows(str(DATA / "sol-labels.v3-questions-partial.jsonl"))
+    draft = json.loads((DATA / "labels.provisional.json").read_text())["labels"]
+    facts = {c["case_id"]: c["code_facts"] for c in map(json.loads, (DATA / "cases.jsonl").read_text().splitlines())}
     actions = {cid: r["verdict"]["answers"]["action"]["choice"] for cid, r in sol.items()}
     print("Sol actions:", dict(Counter(actions.values())))
     for q in ("refactor_instead.kind", "link_owner.kind"):
