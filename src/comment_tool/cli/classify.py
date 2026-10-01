@@ -13,6 +13,7 @@ usage: uv run comment-tool \
          <repository> <commit> <journal dir> (--files <path> ... | --diff <base>)
 """
 
+import argparse
 import json
 import re
 import sys
@@ -81,17 +82,17 @@ def is_touched(index: CodeIndex, found: FoundComment, touched: Mapping[str, froz
     return any(line in changed for line in (*own, *range(described.start, described.end + 1)))
 
 
-def _arguments(argv: list[str]) -> tuple[Path, str, Path, list[str] | None, str | None]:
-    repository, commit, journal = Path(argv[1]), argv[2], Path(argv[3])
-    files = argv[argv.index("--files") + 1 :] if "--files" in argv else None
-    base = argv[argv.index("--diff") + 1] if "--diff" in argv else None
-    if (files is None) == (base is None):
-        raise SystemExit("give either --files <path> ... or --diff <base>")
-    return repository, commit, journal, files, base
-
-
 def main() -> None:
-    repository, commit, journal, files, base = _arguments(sys.argv)
+    parser = argparse.ArgumentParser(description="Classify source comments in files or a Git diff.", allow_abbrev=False)
+    parser.add_argument("repository", type=Path, help="path to the repository")
+    parser.add_argument("commit", help="Git commit or revision to read")
+    parser.add_argument("journal", type=Path, help="directory for the exchange journal")
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--files", nargs="+", metavar="PATH", help="repository-relative source files to classify")
+    selection.add_argument("--diff", metavar="BASE", help="classify comments touched by the diff from this merge base")
+    arguments = parser.parse_args()
+    repository, commit, journal = arguments.repository, arguments.commit, arguments.journal
+    files, base = arguments.files, arguments.diff
     commit = tools.git(["rev-parse", "--verify", f"{commit}^{{commit}}"], repository).strip()
     touched = changed_lines(repository, base, commit) if base is not None else None
     scope = sorted(touched) if touched is not None else files

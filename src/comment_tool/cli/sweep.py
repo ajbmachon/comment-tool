@@ -23,9 +23,9 @@ usage: uv run comment-sweep \
          <repository> <commit> <parent dir> <out dir> [--only <unit> ...]
 """
 
+import argparse
 import json
 import re
-import sys
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -257,8 +257,16 @@ def outcome_of(row: dict) -> str:
 
 
 def main() -> None:
-    repository, commit, parent, out = Path(sys.argv[1]), sys.argv[2], sys.argv[3], Path(sys.argv[4])
-    only = set(sys.argv[sys.argv.index("--only") + 1 :]) if "--only" in sys.argv else None
+    parser = argparse.ArgumentParser(description="Classify source comments one directory unit at a time.", allow_abbrev=False)
+    parser.add_argument("repository", type=Path, help="path to the repository")
+    parser.add_argument("commit", help="Git commit or revision to read")
+    parser.add_argument("parent", help="repository-relative directory to sweep")
+    parser.add_argument("out", type=Path, help="directory for classification rows and the exchange journal")
+    parser.add_argument("--only", nargs="+", metavar="UNIT",
+                        help="sweep only these child-directory or numbered parent-file units")
+    arguments = parser.parse_args()
+    repository, commit, parent, out = arguments.repository, arguments.commit, arguments.parent, arguments.out
+    only = set(arguments.only) if arguments.only is not None else None
     out.mkdir(parents=True, exist_ok=True)
     commit = tools.git(["rev-parse", "--verify", f"{commit}^{{commit}}"], repository).strip()
     questions = question_set(json.loads(QUESTIONS.read_text()))
