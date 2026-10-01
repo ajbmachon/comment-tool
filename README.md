@@ -5,8 +5,8 @@ an escalation when it is unsure. Code finds the comments and the code they descr
 questions about each one, and code composes the action (`comment_tool.core.compose`). The tool only
 classifies; the caller acts on the rows.
 
-- **Run it:** `uv run comment-tool <repository> <commit> <journal dir> (--files <path> ... | --diff <base>)`
-  prints one JSON row per comment. A directory-wide variant is `uv run comment-sweep`. Only our own
+- **Run it:** [Commands and help](#running). `comment-tool` prints one JSON row per comment;
+  `comment-sweep` writes rows by directory unit. Only our own
   repositories (Heedvane and analysis-engine, see `comment_tool.repos`) may be classified, because every
   Jev exchange is journaled.
 - **Read the rows:** [docs/CONTRACT.md](docs/CONTRACT.md).
@@ -16,6 +16,29 @@ classifies; the caller acts on the rows.
   `COMMENT_TOOL_DATA` overrides it.
 - **Rewriting a comment:** [docs/rewrite/PROMPT-DRAFT.md](docs/rewrite/PROMPT-DRAFT.md) is guidance for
   the caller.
+
+## Running
+
+```text
+uv run comment-tool --help
+uv run comment-tool <repository> <commit> <journal dir> --files <path> ...
+uv run comment-tool <repository> <commit> <journal dir> --diff <base>
+
+uv run comment-sweep --help
+uv run comment-sweep <repository> <commit> <parent dir> <out dir> [--only <unit> ...]
+```
+
+`--files` takes one or more repository-relative paths; `--diff` takes one base revision. Choose
+exactly one. `comment-tool` prints classification rows to stdout and a summary to stderr.
+
+For `comment-sweep`, `<parent dir>` is repository-relative. Each child directory is a unit;
+the parent's own files form numbered units such as `src#1`. `--only` takes one or more unit
+names, such as `src/services`; omit it to sweep every unit. Rows and the exchange journal go
+to `<out dir>`, and unit summaries go to stdout.
+
+Both commands accept `-h` or `--help` without positional arguments and exit successfully.
+Missing arguments, unknown options or conflicting file/diff selections print usage and exit
+with status 2 before repository reads or journal creation.
 
 ## Layout
 
