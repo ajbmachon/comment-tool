@@ -36,13 +36,13 @@ from jev_navigator.history import FETCHED, HistoryTooLargeError
 from jev_navigator.index import tools
 from jev_navigator.index.code_index import CodeIndex
 from jev_navigator.index.spans import CodeSlice
+from jev_navigator.judgments.client import InputBudgetExceededError
 from jev_navigator.judgments.judge import CallCapReachedError, Judge
 from jev_navigator.judgments.questions import Check, Criterion
 
 import comment_tool.core.compose as compose
 from comment_tool.claims.list_claims import checked_list_claim, list_claim_for, with_list_claim_question
 from comment_tool.claims.rewrite_packet import rewrite_job
-from comment_tool.core import request_budget
 from comment_tool.core.comment_discovery import FoundComment, code_decision, found_comments
 from comment_tool.core.comment_review import (
     MEASURED_CONTEXT,
@@ -139,17 +139,13 @@ def _unproven(signature: str) -> bool:
     return ", candidate:" in signature or ", unresolved:" in signature
 
 
-def search_for_described_code(index: CodeIndex, judge: Judge, case: CommentCase) -> FindResult | None:
+def search_for_described_code(index: CodeIndex, judge: Judge, case: CommentCase) -> FindResult:
     """One search; `find_code` runs it on its own scope of `judge`, so its budget counts only its
-    calls. None when the search could not be run at all, which is not a finding that the code is
-    absent anywhere: the places it did not read stay uninspected, and the caller decides."""
+    calls. An input or history refusal propagates to the caller as uninspected evidence."""
     start = [place_for_line(index, case.file, case.last_line, "comment")]
     stop_rule = StopRule(HOLDS_WHAT_COMMENT_IS_ABOUT, shared={"comment": {"text": case.text}}, sections=STOP_SECTIONS)
-    try:
-        return find_code(index, judge, f"the code this comment describes: {case.text}", start,
-                         commit=index.commit, stop_rule=stop_rule)
-    except (HistoryTooLargeError, CallCapReachedError):
-        return None
+    return find_code(index, judge, f"the code this comment describes: {case.text}", start,
+                     commit=index.commit, stop_rule=stop_rule)
 
 
 def reasked_on_elsewhere(index: CodeIndex, judge: Judge, case: CommentCase, questions: QuestionSet, row: dict,
@@ -157,38 +153,20 @@ def reasked_on_elsewhere(index: CodeIndex, judge: Judge, case: CommentCase, ques
     """Only the stale questions, asked again with `extra` in `code.elsewhere`; every other answer
     stays the first packet's. None when `extra` holds nothing the described code does not.
 
-    Places that do not all fit in one request are asked in as many requests as they need, because
-    one place does not answer another place's question, and a packet above a route's request-token
-    limit is refused rather than answered. The lowest answer per question wins: a place that shows
-    the detail contradicts a place that hides it, and `stale_of` is the lowest of its three parts.
-    A place larger on its own than one request may be is escalated, never cut down."""
+    Keep the coupled evidence together. A provider refusal preserves the first answers and
+    escalates staleness; independently scored fragments cannot establish the original property."""
     before, after = MEASURED_CONTEXT(index, case)
     new = [piece for piece in extra if piece.text not in after.text]
     if not new:
         return None
     checks = stale_reask_checks(questions)
-    units = [[piece] for piece in new]
-
-    def packet_of(pieces: list[CodeSlice]) -> dict:
-        return comment_state(case, before, after, tuple(pieces))
-
-    def too_big(packet: list[CodeSlice]) -> bool:
-        return not request_budget.packet_fits(judge, packet_of(list(packet)))
-
-    packets = request_budget.packets_fitting(judge, units, too_big)
-    if packets is None:
-        too_big_here = [unit[0] for unit in units if too_big(list(unit))]
-        return with_escalation(row, [f"staleness is not checkable on this evidence: {len(too_big_here)} "
-                                    f"{'place' if len(too_big_here) == 1 else 'places'} of it will not "
-                                    "fit a request this run's routes accept"])
-    answers: dict[str, float] = {}
-    digests: list[str] = []
-    for packet in packets:
-        asked = judge.ask_all(packet_of(packet), checks=checks)
-        answers = request_budget.lowest_answers(answers, {name: result.probability
-                                                          for name, result in asked.checks.items()})
-        digests.append(asked.request_sha256)
-    reask = {"probabilities": answers, "request_sha256": digests, "packets": len(packets),
+    try:
+        asked = judge.ask_all(comment_state(case, before, after, tuple(new)), checks=checks)
+    except InputBudgetExceededError as error:
+        return with_escalation({**row, "judgment_error": str(error)},
+                               ["staleness could not be checked: its complete evidence exceeded the provider input budget"])
+    answers = {name: result.probability for name, result in asked.checks.items()}
+    reask = {"probabilities": answers, "request_sha256": asked.request_sha256,
              "elsewhere": [piece.source() for piece in new]}
     return {**recomposed(row, {**row["probabilities"], **answers}, case), "stale_reask": reask,
             "first_answer": _first(row)}
@@ -220,10 +198,10 @@ def judged(index: CodeIndex, judge: Judge, case: CommentCase, questions: Questio
         return {**row, "decided_by": "jev+rule after definition_fetch" if "first_answer" in row else "jev+rule"}
     if not compose.search_could_settle(row.get("first_answer", row)["probabilities"]):
         return {**row, "decided_by": "escalated"}
-    result = search_for_described_code(index, judge, case)
-    if result is None:
-        return {**with_escalation(row, ["the search for the described code could not be run: its evidence "
-                                       "outgrew the input budget this run's routes accept"]),
+    try:
+        result = search_for_described_code(index, judge, case)
+    except (HistoryTooLargeError, CallCapReachedError, InputBudgetExceededError) as error:
+        return {**with_escalation(row, [f"the search could not finish: {type(error).__name__}: {error}"]),
                 "search": {"outcome": "not_yet_inspected", "unfinished": True}, "decided_by": "escalated"}
     search = search_record(result)
     first = row.get("first_answer") or _first(row)
@@ -248,7 +226,14 @@ def _first(row: dict) -> dict:
 
 def review_found(index: CodeIndex, judge: Judge, found: FoundComment, questions: QuestionSet) -> dict:
     decided = code_decision(found)
-    row = decided if decided is not None else judged(index, judge, found.case, questions)
+    try:
+        row = decided if decided is not None else judged(index, judge, found.case, questions)
+    except InputBudgetExceededError as error:
+        before, after = MEASURED_CONTEXT(index, found.case)
+        row = with_escalation({"action": None, "decided_by": "escalated", "judgment_error": str(error),
+                               "evidence": {"before_comment": before.source() if before else None,
+                                            "after_comment": after.source()}},
+                              ["the complete comment evidence exceeded the provider input budget; no classification was made"])
     state = row.pop("state", None)
     if row["action"] == "rewrite" and "escalate" not in row:
         row["rewrite_job"] = _rewrite_job(index, found, row, state)
