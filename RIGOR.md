@@ -59,10 +59,11 @@ calls `find_comments` with `include_noise=True` and writes one row per comment b
 and the reason when code decided it, so totals count every comment found. Check: rows per unit
 equal the blocks `find_comments` returns for that unit with noise included.
 
-## 8. Heavy jobs run through the machine slot
+## 8. Jobs run directly
 
-Every sweep, labelling run, test or build runs as `~/.local/bin/run-slot -- <command>`, so this
-job never pushes the shared machine past its load and memory limits.
+Run tests, lint, type checks, builds, benchmarks and labelling jobs directly and in parallel;
+never queue behind `run-slot` or wait for a job slot. Watch free memory on heavy parallel jobs.
+This is André's 28 September 2026 replacement of the machine-slot rule.
 
 ## Design rule: jev-navigator stays a general library
 
