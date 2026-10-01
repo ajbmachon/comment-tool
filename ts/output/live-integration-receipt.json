@@ -1,0 +1,73 @@
+{
+  "case": "hv-d01",
+  "scope": "one original provider request; provenance and reducer integration",
+  "acceptedIntegration": true,
+  "sourceHead": "1af71adaaefc91fa4f3200cee42aabf8b880aa06",
+  "originalBase": "b38b2c88b25f33f4d93f387d01ca29a66b63765a",
+  "startedAt": "2026-10-01T17:47:33.110514+00:00",
+  "endedAt": "2026-10-01T17:47:34.074073+00:00",
+  "request": {
+    "canonicalSha256": "d64f8f8787f5cf5cba55297b67213f6776941a7f9905e4f7b5441485046ff8cf",
+    "wireSha256": "94853929762756f6eb0f8efbd9acf37a2400bcb4c2836e25f0df7725498fd3e5",
+    "requestedModel": "jev-latest",
+    "attempts": 1,
+    "retries": 0,
+    "questionCount": 18
+  },
+  "response": {
+    "httpStatus": 200,
+    "servedModel": "jev-1.13.0",
+    "typedAnswers": 18,
+    "noulProbabilities": 14,
+    "usage": {
+      "input_tokens": 4016,
+      "output_tokens": 594
+    },
+    "costUsd": null
+  },
+  "result": {
+    "python": {
+      "action": "keep",
+      "escalated": false,
+      "reasons": []
+    },
+    "typescript": {
+      "action": "keep",
+      "escalated": false,
+      "reasons": []
+    },
+    "original": {
+      "action": "keep",
+      "escalated": false,
+      "reasons": []
+    }
+  },
+  "timings": {
+    "invocationSeconds": 0.9633976249606349,
+    "adapter_ms": 508,
+    "evaluate_ms": 3
+  },
+  "owners": {
+    "actionEscalationReasons": "ts/src/policy.ts evaluateCase",
+    "independentPython": "compose.py",
+    "independentPythonSha256": "f328699a0b1807a4ee25809bd79977eaed58c934c141b5c15be087d524f92605",
+    "transport": "journaled_client.py JevHttpClient",
+    "durableRawResponse": "native Judge -> EvalsJournal -> ProviderResponseJournal"
+  },
+  "artifactSha256": {
+    "liveJournal": "474c3ffbb2cdd91d805f8f92a3830ddb60cdbf2d677640709ab57428ff6b90de",
+    "liveAnswers": "4fdb79cf444e5c5ae86692ad224ce7f94e0d9649243fdb9ba0415a15ee6067ee",
+    "liveReceipt": "5abbf4895f704062a0356e0a1ce3103e786e70d728e375f6ffcacb6ed2dcd603",
+    "independentComparison": "306097ec62e8876a806b560424e220db4bc862cb02f3c60baf51f00468a2ff9f",
+    "evidenceManifest": "584804854fc61ce6e58b10e9d6db93a5f5a43a987048ee4ba7a57fd79f91940a",
+    "rootSourceAdmission": "47ba2e7e3a17e254e3d0d0c11447aa865d7feb07444e7c1e30e510a31f239894"
+  },
+  "limitations": [
+    "One case establishes neither accuracy nor calibration; production adoption is not admitted.",
+    "Meta design review lacks grounded atomicity/semantic contrasts and automated TypeScript consumer coverage.",
+    "Discern 0.5.0 still requires the retained Effect rc.118 compatibility patch.",
+    "Long-lived successful sweeps retain EvalsJournal exchange handles until journal lifetime ends; no completion protocol added.",
+    "The raw Score legend is retained in the journal; the existing typed SDK stores value, confidence and full distribution without that presentation field.",
+    "Earlier local HTTP proof remains 6 caught out of 7; its undetected stale probe was masked by another minimum prerequisite."
+  ]
+}
