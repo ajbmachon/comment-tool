@@ -43,8 +43,8 @@ contain only the non-doc comments selected for that round.
 
 `uv run pytest` runs everything; it needs the local heedvane and analysis-engine checkouts, the round
 data and the heedvane-evals checkout. Hosted CI runs `uv run pytest -m "not local"`: the tests that need
-none of those. The library, [jev-navigator](https://github.com/ajbmachon/jev-navigator), comes from its
-main branch; a scored round records the exact library commit it ran on in its frozen record.
+none of those. The library, [jev-navigator](https://github.com/ajbmachon/jev-navigator), is pinned to its
+verified repair commit `cc90bfc6`; a scored round records the exact library commit it ran on in its frozen record.
 
 ## Scored rounds, before and after the restructure
 

@@ -21,6 +21,12 @@ With `--diff`, only the comments a change touches are classified: a comment whos
 ## How to read a row
 
 1. **Is `escalate` present?** Then the tool is not sure. `action` is only its best guess, and `escalate.reasons` says why, in the form `<answer> <value>`. The caller decides, and a human decides after the caller if needed.
+A provider input-budget refusal keeps the comment row and its evidence. If no initial judgment
+was obtained, `action` is null and probabilities are absent; this is an unanswered comment,
+not a keep/remove judgment. `judgment_error` preserves the real refusal. A refused staleness
+recheck keeps the first answers and adds an escalation; coupled evidence is never truncated
+or classified from independent fragments.
+
 2. **Otherwise `action` is the classification:**
 
 | `action` | Meaning | What the caller does |

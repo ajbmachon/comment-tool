@@ -34,6 +34,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from jev_navigator.judgments.answers import JevResponse, response_from_raw
+from jev_navigator.judgments.client import input_budget_error
 from jev_navigator.judgments.journal import JournalRequest, RawResponse
 from jev_navigator.judgments.judge import Judge
 from jev_navigator.judgments.questions import request_body
@@ -113,7 +114,7 @@ class WireCompatClient:
     byte Jev: criteria are flattened to strings before sending, and the response is decoded by
     jev-navigator's parser from the exact bytes instead of the SDK's strict response schemas
     (whose score `legend` model rejects Drex's echo shape). Every SDK-internal access lives in
-    `_send_raw`, so an SDK version bump is a one-function fix.
+    this adapter, including decoding typed refusals after their raw bytes are journaled.
     """
 
     def __init__(self) -> None:
@@ -152,13 +153,31 @@ class WireCompatClient:
         sdk_send(self._sdk._http_client, self._sdk._retry, request)  # noqa: SLF001
 
     def send(self, state: Mapping, questions: Mapping) -> RawResponse:
-        self._send_raw(state, questions)
+        try:
+            self._send_raw(state, questions)
+        except Exception as error:
+            typed = input_budget_error(error)
+            if typed is not None:
+                captured = self._capture.take()
+                if captured is not None:
+                    return captured
+                raise typed from error
+            raise
         captured = self._capture.take()
         if captured is None:
             raise RuntimeError("the SDK transport captured no response")
         return captured
 
     def parse(self, raw: RawResponse) -> JevResponse:
+        if raw.status is not None and raw.status >= 400:
+            import httpx2
+            from typesafe_sdk._core.errors import api_error
+
+            error = api_error(raw.status, raw.json(), httpx2.Headers())
+            typed = input_budget_error(error)
+            if typed is not None:
+                raise typed from error
+            raise error
         # jev-navigator's parser, not the SDK's strict response schemas: the SDK builds and
         # sends the request, but Drex and the finetuned models echo score legends in shapes
         # the SDK's models reject and the library accepts.
