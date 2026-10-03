@@ -153,15 +153,20 @@ class WireCompatClient:
         sdk_send(self._sdk._http_client, self._sdk._retry, request)  # noqa: SLF001
 
     def send(self, state: Mapping, questions: Mapping) -> RawResponse:
+        """Send and hand back the captured raw response, whatever the provider did.
+
+        A refusal or an undecodable body comes back as captured bytes, never as a silent
+        silence: the judge journals those bytes before handing them to `parse`, which turns
+        them back into the typed error (a budget refusal keeps its `max_tokens_exceeded`
+        marker in the raised error). With no capture there is nothing to journal as bytes,
+        so the original error raises untouched.
+        """
         try:
             self._send_raw(state, questions)
-        except Exception as error:
-            typed = input_budget_error(error)
-            if typed is not None:
-                captured = self._capture.take()
-                if captured is not None:
-                    return captured
-                raise typed from error
+        except Exception:
+            refused = self._capture.take()
+            if refused is not None:
+                return refused
             raise
         captured = self._capture.take()
         if captured is None:
@@ -169,6 +174,8 @@ class WireCompatClient:
         return captured
 
     def parse(self, raw: RawResponse) -> JevResponse:
+        """Decode captured bytes; a non-2xx or structurally invalid reply raises here, after
+        `send` handed the journaled bytes back and the journal kept them."""
         if raw.status is not None and raw.status >= 400:
             import httpx2
             from typesafe_sdk._core.errors import api_error
@@ -188,9 +195,13 @@ class ExchangeJournal:
     """jev-navigator's `Journal` protocol, writing the round-audit's line schema durably.
 
     One fsynced line per event. `request_id` is the request's sha256 — what result rows and
-    `row_audit` cite — and `provider_request_sha256` binds each response to the exact request
-    bytes that produced it. A failure keeps the response bytes when one arrived but did not
-    parse.
+    `row_audit` cite — and `provider_request_sha256` on a response row is the hash of the
+    measured SENT bytes, or null when no request bytes were captured (never the planned body:
+    the wire body is flattened and compact, so it differs from the prepared body, and the
+    replay slot `sent_bodies`/`require_sent_states` compare and re-hash stays the prepared
+    body). Every call that ended in a refusal or a malformed reply keeps exactly one response
+    row, `failed`, with its exact response bytes when one arrived and its measured request
+    bytes when they were captured.
     """
 
     def __init__(self, path: Path, run_id: str, repositories: set[str]) -> None:
@@ -202,6 +213,7 @@ class ExchangeJournal:
         self._lock = threading.Lock()
         self._touch()
         self._open: dict[str, dict] = {}
+        self._answered: set[str] = set()
 
     def _touch(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -212,31 +224,74 @@ class ExchangeJournal:
     def record_request(self, request: JournalRequest) -> str:
         body = request.body or request_body(request.state, request.questions)
         exchange_id = f"ex-{request.request_sha256[:16]}"
-        self._open[exchange_id] = {"model": request.requested_model, "request_sha256": request.request_sha256,
-                                   "body_sha256": _sha256(body)}
+        self._open[exchange_id] = {"model": request.requested_model, "request_sha256": request.request_sha256}
         self._append({
             "run_id": self.run_id, "exchange_id": exchange_id, "request_id": request.request_sha256,
             "operation": "comment_review", "provider": "system-one", "model": request.requested_model,
             "attempt": 1, "captured_at": _now(), "submitted_request_sha256": request.request_sha256,
             "kind": "request", "endpoint": None, "request_content_type": "application/json",
-            "provider_request_sha256": _sha256(body), "request_body_base64": base64.b64encode(body).decode(),
+            "request_body_base64": base64.b64encode(body).decode(),
         })
         return exchange_id
 
     def record_response(self, request_id: str, response: RawResponse) -> None:
-        row = self._response_row(request_id, response, "complete", None)
+        """Journal the exchange's one response row: `complete` only when the bytes replay.
+
+        `response_read_status` describes whether the body can be replayed and audited, not
+        merely whether bytes arrived: a refusal or an undecodable body is journaled as
+        `failed`, which the audit consumers skip without choking on it, and it still binds
+        the measured request bytes.
+        """
+        replayable = _replayable(response)
+        row = self._response_row(request_id, response, "complete" if replayable else "failed",
+                                 None if replayable else "the captured body holds no replayable answer")
+        self._answered.add(request_id)
         self._open.pop(request_id, None)
         self._append(row)
 
     def record_failure(self, request_id: str, error: str, response: RawResponse | None = None) -> None:
-        if response is None:
-            self._open.pop(request_id, None)
-            return
-        row = self._response_row(request_id, response, "failed", error)
+        """Keep a refusal or malformed reply as one row for its exchange, never two.
+
+        When the exact response bytes were captured the exchange's single row was already
+        written by `record_response` (the dispatch flow records the same response as bytes and
+        as the raised error), so this stays quiet instead of duplicating it. Without a
+        capture no bytes are invented: the error-only row keeps the error text and leaves the
+        measured slots absent, because an uncaptured exchange has no measured truth.
+        """
+        if response is not None:
+            if request_id in self._answered:
+                return
+            row = self._response_row(request_id, response, "failed", error)
+        else:
+            row = self._failure_row(request_id, error)
         self._open.pop(request_id, None)
         self._append(row)
 
     def _response_row(self, request_id: str, response: RawResponse, read_status: str, read_error: str | None) -> dict:
+        exchange = self._open.get(request_id, {})
+        row = {
+            "run_id": self.run_id, "exchange_id": request_id,
+            "request_id": exchange.get("request_sha256", request_id),
+            "operation": "comment_review", "provider": "system-one", "model": exchange.get("model"),
+            "attempt": 1, "captured_at": _now(),
+            "submitted_request_sha256": exchange.get("request_sha256", request_id),
+            "kind": "response",
+            "provider_request_sha256": _sha256(response.sent_body) if response.sent_body is not None else None,
+            "response_status": response.status, "response_content_type": response.content_type,
+            "response_read_status": read_status, "response_read_error": read_error,
+            "response_sha256": _sha256(response.body), "response_body_base64": base64.b64encode(response.body).decode(),
+        }
+        if response.sent_body is not None:
+            row["sent_body_base64"] = base64.b64encode(response.sent_body).decode()
+        return row
+
+    def _failure_row(self, request_id: str, error: str) -> dict:
+        """A refusal or timeout that produced no capturable response still keeps one row.
+
+        The response slots stay absent: with no captured bytes there is nothing to bind, and
+        an unbound replay slot (no `request_body_base64`) keeps `sent_bodies`, `audit_journal`
+        and `require_sent_states` skipping this exchange rather than failing on it.
+        """
         exchange = self._open.get(request_id, {})
         return {
             "run_id": self.run_id, "exchange_id": request_id,
@@ -244,10 +299,7 @@ class ExchangeJournal:
             "operation": "comment_review", "provider": "system-one", "model": exchange.get("model"),
             "attempt": 1, "captured_at": _now(),
             "submitted_request_sha256": exchange.get("request_sha256", request_id),
-            "kind": "response", "provider_request_sha256": exchange.get("body_sha256"),
-            "response_status": response.status, "response_content_type": response.content_type,
-            "response_read_status": read_status, "response_read_error": read_error,
-            "response_sha256": _sha256(response.body), "response_body_base64": base64.b64encode(response.body).decode(),
+            "kind": "failure", "error": error, "response_read_status": "failed", "response_read_error": error,
         }
 
     def _append(self, row: dict) -> None:
@@ -259,7 +311,12 @@ class ExchangeJournal:
 
 
 def sent_bodies(path: Path) -> dict[str, bytes]:
-    """Request id (the request's hash) to the exact body bytes sent, for every request in a journal."""
+    """Request id (the request's hash) to the prepared body bytes for every request in a journal.
+
+    This is the replay slot the round audit compares and re-hashes, so it replays the prepared
+    body, never the flattened wire bytes. What actually went over the wire is kept separately,
+    per response row, as `sent_body_base64` with its measured hash — not reconstructed here.
+    """
     return {event["request_id"]: base64.b64decode(event["request_body_base64"])
             for event in map(json.loads, path.read_text().splitlines()) if event["kind"] == "request"}
 
@@ -297,6 +354,17 @@ class _RouteDialect:
 
     def ask(self, state, questions):
         return self._routed.ask(state, flatten_criteria(questions))
+
+
+def _replayable(response: RawResponse) -> bool:
+    """True when the journaled body is a replayable answer set, not just bytes that arrived."""
+    if response.status != 200:
+        return False
+    try:
+        answers = json.loads(response.body).get("answers")
+    except (ValueError, TypeError, AttributeError):
+        return False
+    return isinstance(answers, dict)
 
 
 def _sha256(body: bytes) -> str:
