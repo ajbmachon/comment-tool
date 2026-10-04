@@ -51,7 +51,6 @@ KEYWORD_ARGUMENT = re.compile(r"(?<=[(,])\s*[A-Za-z_$][\w$]*\s*=(?!=)|(?<=[(,]\s
 SCRIPT_CONDITION = re.compile(r"\b(?:if|while)\s*\(")
 PYTHON_CONDITION = re.compile(r"^\s*(?:if|elif|while)\s+(.+?):\s*(?:#.*)?$")
 CALLED_BY_BINDING = re.compile(r"=\s*(?:await\s+)?(?:new\s+)?([A-Za-z_$][\w$]*)\s*\(")
-SCRIPT_SUFFIXES = (".ts", ".tsx")
 
 
 @dataclass(frozen=True)

@@ -34,6 +34,7 @@ exactly one. `comment-tool` prints classification rows to stdout and a summary t
 Both commands read the same source family: Python, TypeScript (including `.mts`/`.cts`) and
 JavaScript (`.js`, `.jsx`, `.mjs`, `.cjs`), and never tests, test-support, generated code or emitted
 `.d.ts`/`.d.mts`/`.d.cts` declarations (see [docs/CONTRACT.md](docs/CONTRACT.md)).
+The library owns suffix recognition; both commands consume one shared source-selection predicate.
 
 For `comment-sweep`, `<parent dir>` is repository-relative. Each child directory is a unit;
 the parent's own files form numbered units such as `src#1`. `--only` takes one or more unit

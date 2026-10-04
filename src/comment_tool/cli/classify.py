@@ -28,9 +28,8 @@ from jev_navigator.judgments.judge import Judge
 
 from comment_tool.cli.sweep import (
     COMMENT_WORKERS,
-    NOT_SOURCE,
     QUESTIONS,
-    SOURCE,
+    is_source_file,
     outcome_of,
     review_found,
 )
@@ -48,7 +47,7 @@ def changed_lines(repository: Path, base: str, commit: str) -> dict[str, frozens
     diff = tools.git(["diff", "-U0", "--no-color", "--no-ext-diff", f"{base}...{commit}"], repository)
     touched: dict[str, frozenset[int]] = {}
     for file, hunks in _file_sections(diff):
-        if SOURCE.search(file) and not NOT_SOURCE.search(file):
+        if is_source_file(file):
             touched[file] = frozenset(line for match in HUNK.finditer(hunks) for line in _hunk_lines(match))
     return touched
 
