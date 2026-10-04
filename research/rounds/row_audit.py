@@ -14,6 +14,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from jev_navigator.judgments.answers import response_from_raw
 from jev_navigator.judgments.judge import Judge
 from jev_navigator.judgments.questions import request_sha256
 from jev_navigator.testing import ScriptedJevClient
@@ -21,7 +22,7 @@ from jev_navigator.testing import ScriptedJevClient
 from comment_tool.cli.sweep import HOLDS_WHAT_COMMENT_IS_ABOUT
 from comment_tool.core.comment_review import QuestionSet, stale_reask_checks
 from comment_tool.core.definition_fetch import Definitions
-from comment_tool.journal.journaled_client import sent_bodies
+from comment_tool.journal.journaled_client import submitted_bodies
 
 SEARCH_QUESTIONS = frozenset({"contains_target", "could_contain_target", "open_first", HOLDS_WHAT_COMMENT_IS_ABOUT.name})
 """The questions a gated code search asks; a journaled request may ask only these instead of a registered set."""
@@ -50,8 +51,13 @@ def registered_question_sets(questions: QuestionSet) -> QuestionSets:
 
 
 def audit_journal(path: Path, sets: QuestionSets) -> None:
-    """Raises unless every journaled request asked a registered question set or only search questions."""
-    for request_id, body in sent_bodies(path).items():
+    """Raises unless every journaled request asked a registered question set or only search questions.
+
+    What a request registered is the prepared body it carried (`submitted_bodies`), whose
+    questions are still in their native shape; the measured wire bytes are kept apart in
+    `sent_bodies` and flatten the criteria, so they are never consulted here.
+    """
+    for request_id, body in submitted_bodies(path).items():
         questions = json.loads(body)["questions"]
         names = {qid.split("@")[0].split("#")[0] for qid in questions}
         if questions not in (sets.first, sets.reask) and not names <= SEARCH_QUESTIONS:
@@ -59,14 +65,41 @@ def audit_journal(path: Path, sets: QuestionSets) -> None:
 
 
 def journal_exchanges(path: Path) -> dict[str, dict]:
-    """Request hash to its journaled state, questions and noul answers, for every complete 200 response."""
-    requests, exchanges = sent_bodies(path), {}
+    """Request hash to its journaled state, questions and noul answers, for every replayable 200 reply.
+
+    The state and questions come from the request's prepared body (`submitted_bodies`), the only
+    body that still holds the registered questions in their native shape. An exchange that
+    received no replayable answer, or whose request registered nothing to check the reply
+    against, keeps no entry: `audit_row` then refuses the row that cites it instead of scoring
+    it against an answer that never arrived.
+    """
+    intents, exchanges = submitted_bodies(path), {}
     for event in map(json.loads, path.read_text().splitlines()):
-        if event.get("response_status") == 200 and event.get("response_read_status") == "complete":
-            body = json.loads(requests[event["request_id"]])
-            answers = json.loads(base64.b64decode(event["response_body_base64"]))["answers"]
-            exchanges[event["request_id"]] = {"state": body["state"], "questions": body["questions"], "nouls": _nouls(answers)}
+        if (intent := intents.get(event["request_id"])) is None or (answers := _replayable(event)) is None:
+            continue
+        body = json.loads(intent)
+        exchanges[event["request_id"]] = {"state": body["state"], "questions": body["questions"],
+                                          "nouls": _nouls(answers)}
     return exchanges
+
+
+def _replayable(event: dict) -> dict | None:
+    """The answers one response event kept, or None when its bytes replay no answer set.
+
+    A refusal, a body that does not decode and a body whose answers the parser cannot read all
+    give None: an exchange that never received a replayable answer is a missing exchange, so
+    `audit_row` refuses the row that cites one instead of scoring it against an answer that
+    never arrived.
+    """
+    if event.get("response_status") != 200 or event.get("response_read_status") != "complete":
+        return None
+    try:
+        body = json.loads(base64.b64decode(event["response_body_base64"]))
+        answers = body["answers"]
+        response_from_raw(body)
+    except (ValueError, TypeError, AttributeError, KeyError):
+        return None
+    return answers or None
 
 
 def _nouls(answers: dict) -> dict[str, float]:
