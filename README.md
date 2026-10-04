@@ -62,6 +62,18 @@ Replay scripts retain the sweep's parsed comment kind and use the same fact clas
 Doc comments therefore remain eligible for rewrite or keep, never removal; historical round-3 packets
 contain only the non-doc comments selected for that round.
 
+## Exchange journal
+
+Every classification exchange records its native submitted request in `journal.jsonl`, bound by
+`request_id`. `submitted_bodies` reads this intent for registered-question and result-row audits.
+`sent_bodies` reads only captured wire bytes; `provider_request_sha256` hashes those measured bytes.
+The SDK serializes the wire request and flattens rich criteria, so native intent is not wire evidence.
+
+A captured refusal or parse failure retains one raw response and the original failure diagnostic.
+Uncaptured requests and routed clients have unavailable wire evidence; gate replay refuses such
+states instead of reconstructing them from native intent. Historical registration audits can still
+read native intent and parse retained answers without claiming what was transmitted.
+
 ## Tests
 
 `uv run pytest` runs everything; it needs the local heedvane and analysis-engine checkouts, the round

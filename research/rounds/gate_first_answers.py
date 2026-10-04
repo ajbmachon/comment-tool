@@ -2,12 +2,16 @@
 existed, so the search gate can be replayed on them.
 
 Round 3 and the lib sweep asked one stale question; the gate reads the three. Round 3's packets come
-from its cases file, as sent. The lib sweep's come from the sweep's journal: the state exactly as it
-was sent, every key in its sent order. The answer store keeps only a key-sorted copy, and Jev can answer
-the two differently (the library verifier, 28.09.2026: 0.83 against 0.70 on one packet). The questions
-are the round-4 set, so only the state's bytes repeat the sweep's request. Before writing any row, every
-new journaled request must carry its packet's sent state byte for byte. Each packet is asked once and
-journaled. The output rows carry the first answer, the round-4 escalation reasons and the gate's verdict.
+from its cases file, as sent. The lib sweep's come from the sweep's journal, and only from its
+measured wire bytes: where a sweep journalled the prepared body alone, as the frozen lib sweep
+did, there is no sent state to replay against and the replay is refused rather than aimed at a
+state nobody measured. The answer store keeps only a key-sorted copy, and Jev can answer the two
+differently (the library verifier, 28.09.2026: 0.83 against 0.70 on one packet). The questions are
+the round-4 set, so only the state's bytes repeat the sweep's request. Before writing any row,
+every new journaled request must have carried its packet's state exactly as the journal measured it
+being sent, and a request that journalled no wire is refused on the same ground.
+Each packet is asked once and journaled. The output rows carry the first answer, the round-4
+escalation reasons and the gate's verdict.
 usage: uv run python gate_first_answers.py <out dir> <lib|round3> [first N packets, for a pilot]
 """
 
@@ -32,22 +36,35 @@ class SentStateMismatchError(ValueError):
     """A new request did not carry its packet's state exactly as the sweep sent it."""
 
 
+class SentStateUnavailableError(ValueError):
+    """A journal captured no wire body for a request, so what that request carried is unknowable from it."""
+
+
 def sent_states(journal_path: Path) -> dict[str, dict]:
-    """Request hash to the state exactly as sent, keys in their sent order."""
+    """Native request hash to captured wire state, retaining its transmitted key order.
+
+    Missing wire capture yields no entry; native submitted intent is not sent evidence.
+    """
     return {request_id: json.loads(body)["state"] for request_id, body in sent_bodies(journal_path).items()}
 
 
-def state_bytes(state: dict) -> bytes:
-    """The state as the client writes it inside a request body."""
-    return json.dumps(state).encode()
+def request_of(row: dict) -> str:
+    """The request a row's first answer came from: a re-ask names its own request separately."""
+    return row.get("first_answer", row)["request_sha256"]
 
 
 def lib_escalations() -> list[dict]:
+    """Lib escalations with measured states; historical intent-only journals cannot prove them."""
     states = sent_states(LIB / "journal.jsonl")
     rows = [json.loads(line) for path in sorted(glob.glob(str(LIB / "apps-*.jsonl"))) for line in Path(path).read_text().splitlines()]
+    if unmeasured := sorted({row["location"] for row in rows if "search" in row and request_of(row) not in states}):
+        raise SentStateUnavailableError(
+            f"{len(unmeasured)} lib packets, starting with {unmeasured[0]}, captured no wire body for their "
+            "request: what each sweep request carried is not knowable from that journal, and replaying a "
+            "packet against a state nobody can prove was sent would ask a different request than the sweep asked")
     return [{"source": "lib sweep", "location": row["location"], "comment": row["comment"], "kind": row["kind"],
              "settled_by_search": row["decided_by"] == "jev+rule after find_code",
-             "state": states[row.get("first_answer", row)["request_sha256"]]}
+             "state": states[request_of(row)]}
             for row in rows if "search" in row]
 
 
@@ -63,10 +80,12 @@ SOURCES = {"lib": lib_escalations, "round3": round3_escalations}
 
 
 def require_sent_states(journal_path: Path, rows: list[dict], packets: list[dict]) -> None:
-    """Raises unless each row's journaled request body carries its packet's state byte for byte."""
-    bodies = sent_bodies(journal_path)
+    """Require captured wire state equal to the packet, independent of JSON serialization spacing."""
+    states = sent_states(journal_path)
     for row, packet in zip(rows, packets, strict=True):
-        if state_bytes(packet["state"]) not in bodies[row["request_sha256"]]:
+        if (state := states.get(row["request_sha256"])) is None:
+            raise SentStateUnavailableError(f"{row['location']}: the journal captured no wire state for its request")
+        if state != packet["state"]:
             raise SentStateMismatchError(f"{row['location']}: the request did not carry the state as sent")
 
 

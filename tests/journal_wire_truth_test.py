@@ -1,7 +1,4 @@
-"""Every call journals exactly one exchange over the real SDK transport: refusals and malformed
-bodies keep their measured wire bytes (never silenced, never journalled twice), and the fresh
-journal still replays the registered questions and every sent state.
-"""
+"""The real SDK sends to a loopback endpoint that independently retains request and reply bytes."""
 
 import base64
 import hashlib
@@ -10,27 +7,35 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
+from jev_navigator.judgments.client import InputBudgetExceededError
+from jev_navigator.judgments.questions import request_sha256
+from pydantic import ValidationError
+from typesafe_sdk._core.errors import TypeSafeAPIConnectionError, TypeSafeRateLimitError
 
 from comment_tool.cli.sweep import QUESTIONS
 from comment_tool.core.comment_review import question_set
-from comment_tool.journal.journaled_client import journaled_judge, sent_bodies
+from comment_tool.journal.journaled_client import journaled_judge, sent_bodies, submitted_bodies
 from research.rounds import row_audit
-from research.rounds.gate_first_answers import sent_states
+from research.rounds.gate_first_answers import require_sent_states, sent_states
 
 pytestmark = pytest.mark.local
 
 STATE = {"comment": {"text": "// z first"}, "code": {"before_comment": "a", "after_comment": "b"}}
-MARKERS = ("clean", "refuse", "budget", "garbage")
+MARKERS = ("clean", "refuse", "budget", "garbage", "invalid", "disconnect", "clean_after")
 BUDGET_BODY = json.dumps({"detail": {"error_type": "max_tokens_exceeded"}}).encode()
 
 
 class DecisionEndpoint(BaseHTTPRequestHandler):
-    """Answer each marker with the exact bytes a silent client would have had to lose."""
+    """Keep the exact received body independently of the client and journal."""
 
     def do_POST(self):
         body = self.rfile.read(int(self.headers["Content-Length"]))
         request = json.loads(body)
         marker = request["state"]["marker"]
+        if marker == "disconnect":
+            self.server.received.setdefault(marker, []).append((body, None))
+            self.close_connection = True
+            return  # the endpoint observed a request, but the capture owner received no response
         if marker == "refuse":
             code, content_type, payload = 429, "text/plain", b"Too Many Requests"
         elif marker == "budget":
@@ -41,7 +46,7 @@ class DecisionEndpoint(BaseHTTPRequestHandler):
             answers = {}
             for name, question in request["questions"].items():
                 if question["type"] == "noul":
-                    answers[name] = {"type": "noul", "noul": 0.1}
+                    answers[name] = {"type": "noul", "noul": "not a probability" if marker == "invalid" else 0.1}
                 elif question["type"] == "choice":
                     labels = list(question["criteria"])
                     answers[name] = {"type": "choice", "choice": labels[0], "confidence": 1.0,
@@ -51,6 +56,7 @@ class DecisionEndpoint(BaseHTTPRequestHandler):
                                      "legend": question["criteria"], "probabilities": {}}
             code, content_type = 200, "application/json"
             payload = json.dumps({"model": request["model"], "answers": answers}).encode()
+        self.server.received.setdefault(marker, []).append((body, payload))
         self.send_response(code)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
@@ -58,13 +64,13 @@ class DecisionEndpoint(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def log_message(self, *_args):
-        """Keep the endpoint silent; the exchanges it served are journalled."""
+        """The endpoint's retained bytes provide the evidence."""
 
 
 @pytest.fixture
 def run(tmp_path, monkeypatch):
-    """One journal for one clean answer, one raw 429 refusal, one budget refusal, one malformed answer."""
     endpoint = ThreadingHTTPServer(("127.0.0.1", 0), DecisionEndpoint)
+    endpoint.received = {}
     thread = threading.Thread(target=endpoint.serve_forever, daemon=True)
     thread.start()
     monkeypatch.setenv("TYPESAFE_BASE_URL", f"http://127.0.0.1:{endpoint.server_port}")
@@ -72,9 +78,7 @@ def run(tmp_path, monkeypatch):
     monkeypatch.setenv("TYPESAFE_DEFAULT_MODEL", "jev-latest")
     monkeypatch.setenv("SYSTEM_ONE_ROUTES", "")
     try:
-        out = tmp_path / "journal"
-        out.mkdir()
-        judge = journaled_judge(out, {"heedvane"})
+        judge = journaled_judge(tmp_path, {"heedvane"})
         questions = question_set(json.loads(QUESTIONS.read_text()))
         answered, raised, states = {}, {}, {}
         for marker in MARKERS:
@@ -82,65 +86,83 @@ def run(tmp_path, monkeypatch):
             states[marker] = state
             try:
                 answered[marker] = judge.ask_all(state, checks=questions.checks, picks=questions.picks,
-                                                 scores=questions.scores)
+                                               scores=questions.scores)
             except Exception as error:
                 raised[marker] = error
-        yield {"journal": out / "journal.jsonl", "questions": questions, "answered": answered,
-               "raised": raised, "states": states}
+        yield {"journal": tmp_path / "journal.jsonl", "questions": questions, "answered": answered,
+               "raised": raised, "states": states, "received": endpoint.received}
     finally:
         endpoint.shutdown()
         endpoint.server_close()
         thread.join()
 
 
-def rows(journal):
-    return [json.loads(line) for line in journal.read_text().splitlines()]
-
-
-def test_a_refusal_or_malformed_answer_journals_its_exchange_exactly_once(run):
+def test_measured_wire_errors_and_replay_follow_the_actual_http_exchange(run):
     journal = run["journal"]
-    lines = rows(journal)
+    rows = [json.loads(line) for line in journal.read_text().splitlines()]
+    measured, submitted = sent_bodies(journal), submitted_bodies(journal)
+    assert set(run["answered"]) == {"clean", "clean_after"}  # a prior SDK failure cannot poison the next send
+    assert set(run["raised"]) == {"refuse", "budget", "garbage", "invalid", "disconnect"}
+    assert isinstance(run["raised"]["refuse"], TypeSafeRateLimitError)
+    assert run["raised"]["refuse"].body == "Too Many Requests"
+    assert isinstance(run["raised"]["budget"], InputBudgetExceededError)
+    assert "max_tokens_exceeded" in str(run["raised"]["budget"])
+    assert run["raised"]["budget"].__cause__.body == json.loads(BUDGET_BODY)
+    assert isinstance(run["raised"]["garbage"], ValidationError)
+    assert isinstance(run["raised"]["invalid"], ValueError)
+    assert isinstance(run["raised"]["disconnect"], TypeSafeAPIConnectionError)
 
-    assert "clean" in run["answered"] and set(run["raised"]) == {"refuse", "budget", "garbage"}
-    assert len(lines) == 2 * len(MARKERS)  # no call is silenced and none journals twice
-    by_exchange = {}
-    for line in lines:
-        by_exchange.setdefault(line["exchange_id"], []).append(line)
-    for exchange in by_exchange.values():
-        [request_row] = [row for row in exchange if row["kind"] == "request"]
-        [response_row] = [row for row in exchange if row["kind"] == "response"]
-        assert len(response_row["request_id"]) == 64  # every response binds the request's own hash
-        measured = base64.b64decode(response_row["sent_body_base64"])
-        assert response_row["provider_request_sha256"] == hashlib.sha256(measured).hexdigest()
-        assert measured != base64.b64decode(request_row["request_body_base64"])
-        # the journalled request hash names the measured wire bytes, never the planned body
+    native_ids = {}
+    for marker in MARKERS:
+        [request] = [row for row in rows if row["kind"] == "request"
+                     and json.loads(base64.b64decode(row["request_body_base64"]))["state"]["marker"] == marker]
+        request_id = request["request_id"]
+        native_ids[marker] = request_id
+        native = json.loads(submitted[request_id])
+        assert request_sha256(native["state"], native["questions"]) == request_id
+        responses = [row for row in rows if row["kind"] == "response" and row["request_id"] == request_id]
+        failures = [row for row in rows if row["kind"] == "failure" and row["request_id"] == request_id]
+        if marker == "disconnect":
+            assert responses == []
+            assert request_id not in measured
+            [failure] = failures
+            error = run["raised"][marker]
+            assert failure["error"] == f"{type(error).__name__}: {error}"
+            assert "response_body_base64" not in failure and "sent_body_base64" not in failure
+            continue
+        [response] = responses
+        received_body, reply_body = run["received"][marker][-1]  # the SDK may retry a refusal
+        assert measured[request_id] == received_body
+        assert base64.b64decode(response["sent_body_base64"]) == received_body
+        assert response["provider_request_sha256"] == hashlib.sha256(received_body).hexdigest()
+        assert response["provider_request_sha256"] != hashlib.sha256(submitted[request_id]).hexdigest()
+        wire = json.loads(received_body)
+        assert wire["state"] == run["states"][marker]
+        assert wire["model"] == "jev-latest"
+        assert wire["questions"] != native["questions"]  # rich native criteria were flattened by the adapter
+        assert base64.b64decode(response["response_body_base64"]) == reply_body
+        assert response["response_sha256"] == hashlib.sha256(reply_body).hexdigest()
+        if marker in run["raised"]:
+            error = run["raised"][marker]
+            [failure] = failures
+            assert failure["error"] == f"{type(error).__name__}: {error}"
+            assert "response_body_base64" not in failure
+            assert response["response_read_status"] == "failed"
+        else:
+            assert failures == []
+            assert response["response_read_status"] == "complete"
 
-    def response_holding(payload: bytes) -> dict:
-        [row] = [row for row in lines if row["kind"] == "response"
-                 and base64.b64decode(row["response_body_base64"]) == payload]
-        return row
-
-    refused = response_holding(b"Too Many Requests")
-    assert (refused["response_status"], refused["response_read_status"]) == (429, "failed")
-    budget = response_holding(BUDGET_BODY)
-    assert (budget["response_status"], budget["response_read_status"]) == (400, "failed")
-    assert "max_tokens_exceeded" in str(run["raised"]["budget"])  # the typed refusal still reaches the sweep
-    malformed = response_holding(b"not json")
-    assert (malformed["response_status"], malformed["response_read_status"]) == (200, "failed")
-    clean = next(row for row in lines if row["kind"] == "response"
-                 and row["exchange_id"] == f"ex-{run['answered']['clean'].request_sha256[:16]}")
-    assert (clean["response_status"], clean["response_read_status"]) == (200, "complete")
-
-
-def test_the_fresh_journal_replays_the_registered_questions_and_every_sent_state(run):
-    journal, questions = run["journal"], run["questions"]
-
-    sets = row_audit.registered_question_sets(questions)
-    row_audit.audit_journal(journal, sets)  # a fresh run's own journal must survive the audit unchanged
-
+    assert set(submitted) == set(native_ids.values())
+    assert set(measured) == set(native_ids.values()) - {native_ids["disconnect"]}
+    sets = row_audit.registered_question_sets(run["questions"])
+    row_audit.audit_journal(journal, sets)  # registration is checked against native intent
     exchanges = row_audit.journal_exchanges(journal)
-    assert len(exchanges) == 1  # refusals and malformed bytes stay failures, never fake answers
-    assert next(iter(exchanges.values()))["questions"] == sets.first
-    assert len(sent_states(journal)) == len(MARKERS)
-    for state in run["states"].values():
-        assert any(json.dumps(state).encode() in body for body in sent_bodies(journal).values())
+    assert set(exchanges) == {native_ids["clean"], native_ids["clean_after"]}
+    assert exchanges[native_ids["clean"]]["questions"] == sets.first
+    assert exchanges[native_ids["clean"]]["state"] == run["states"]["clean"]
+    assert exchanges[native_ids["clean"]]["nouls"] == {check.name: 0.1 for check in run["questions"].checks}
+    states = sent_states(journal)
+    assert states == {native_ids[marker]: state for marker, state in run["states"].items() if marker != "disconnect"}
+    captured_markers = [marker for marker in MARKERS if marker != "disconnect"]
+    require_sent_states(journal, [{"location": marker, "request_sha256": native_ids[marker]} for marker in captured_markers],
+                        [{"state": run["states"][marker]} for marker in captured_markers])
