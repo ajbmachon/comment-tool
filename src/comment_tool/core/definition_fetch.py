@@ -24,6 +24,7 @@ from pathlib import Path, PurePosixPath
 from jev_navigator.index import tools
 from jev_navigator.index.code_index import CodeIndex
 from jev_navigator.index.imports import imported_names, resolve_import
+from jev_navigator.index.languages import language_of as library_language_of
 from jev_navigator.index.spans import CodeSlice, Span
 from jev_navigator.index.tsconfig import ScriptPaths, nearest_script_paths
 
@@ -42,6 +43,8 @@ NOT_NAMES = {
     "python": {"not", "and", "or", "is", "in", "self", "cls", "await", "lambda", *dir(builtins)},
 }
 """Keywords, the receiver itself, and names the language provides, which have no definition to fetch."""
+NOT_NAMES["javascript"] = NOT_NAMES["typescript"]
+"""JavaScript shares the script keyword set; only the typed surface differs, which conditions do not read."""
 STRING = re.compile(r"(?:\b[rRbBuUfF]{1,2})?(?:'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"|`(?:\\.|[^`\\])*`)")
 ROOT_NAME = re.compile(r"(?<![\w.$])[A-Za-z_$][\w$]*")
 KEYWORD_ARGUMENT = re.compile(r"(?<=[(,])\s*[A-Za-z_$][\w$]*\s*=(?!=)|(?<=[(,]\s)[A-Za-z_$][\w$]*\s*=(?!=)")
@@ -66,7 +69,13 @@ class Definitions:
 
 
 def language_of(path: str) -> str:
-    return "python" if path.endswith(".py") else "typescript"
+    """The semantic language of `path`, reused from the library's own suffix table so there is one
+    owner of that fact: `python`, or `typescript` for the typed script suffixes, or `javascript`.
+    A suffix the library cannot parse fails loudly instead of silently reading as another language."""
+    language = library_language_of(path)
+    if language is None:
+        raise ValueError(f"unsupported source language: {path}")
+    return "typescript" if language == "tsx" else language
 
 
 def condition_names(line: str, language: str) -> tuple[str, ...]:
@@ -126,7 +135,7 @@ def _statement_end(lines: Sequence[str], start: int, language: str) -> int:
     for number in range(start, last + 1):
         text = STRING.sub('""', lines[number - 1]).rstrip()
         depth += sum(text.count(c) for c in "([{") - sum(text.count(c) for c in ")]}")
-        ended = text.endswith(";") if language == "typescript" else not text.endswith("\\")
+        ended = text.endswith(";") if language != "python" else not text.endswith("\\")
         if depth <= 0 and ended:
             return number
     return last

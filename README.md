@@ -31,6 +31,10 @@ uv run comment-sweep <repository> <commit> <parent dir> <out dir> [--only <unit>
 `--files` takes one or more repository-relative paths; `--diff` takes one base revision. Choose
 exactly one. `comment-tool` prints classification rows to stdout and a summary to stderr.
 
+Both commands read the same source family: Python, TypeScript (including `.mts`/`.cts`) and
+JavaScript (`.js`, `.jsx`, `.mjs`, `.cjs`), and never tests, test-support, generated code or emitted
+`.d.ts`/`.d.mts`/`.d.cts` declarations (see [docs/CONTRACT.md](docs/CONTRACT.md)).
+
 For `comment-sweep`, `<parent dir>` is repository-relative. Each child directory is a unit;
 the parent's own files form numbered units such as `src#1`. `--only` takes one or more unit
 names, such as `src/services`; omit it to sweep every unit. Rows and the exchange journal go

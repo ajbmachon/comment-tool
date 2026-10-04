@@ -14,7 +14,7 @@ What `classify.py` prints, one JSON object per line on stdout, one per comment. 
 The packaged command is `uv run comment-tool`. Its arguments, help and directory sweep variant
 are documented in [Commands and help](../README.md#running).
 
-With `--diff`, only the comments a change touches are classified: a comment whose own lines, or the code it describes, hold a line changed between the merge base of `<base>` and `<commit>`. Comments in a file the diff deletes are out of scope, because a deleted comment needs no action. Only Python and TypeScript source files are read, never tests or generated code. A summary goes to stderr. Every Jev exchange is journaled in `<journal dir>`, so only our own repositories (Heedvane and analysis-engine) can be classified.
+With `--diff`, only the comments a change touches are classified: a comment whose own lines, or the code it describes, hold a line changed between the merge base of `<base>` and `<commit>`. Comments in a file the diff deletes are out of scope, because a deleted comment needs no action. Only Python, TypeScript and JavaScript source files are read (`.py`, `.ts`, `.mts`, `.cts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`); tests, test-support, generated code and emitted `.d.ts`/`.d.mts`/`.d.cts` declarations are never read. A summary goes to stderr. Every Jev exchange is journaled in `<journal dir>`, so only our own repositories (Heedvane and analysis-engine) can be classified.
 
 ## How to read a row
 

@@ -17,6 +17,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from comment_tool.core.definition_fetch import language_of
+
 MAX_ANNOTATED_LINES = 25
 MAX_PRECEDING_LINES = 8
 DATE = re.compile(
@@ -216,7 +218,7 @@ def build_case(case_id: str, repo: str, commit: str, path: str, line: int) -> di
         "state": {
             "comment": {"text": comment_text},
             "code": {
-                "language": "python" if path.endswith(".py") else "typescript",
+                "language": language_of(path),
                 "before_comment": before_text,
                 "after_comment": code_text,
             },

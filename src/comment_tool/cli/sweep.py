@@ -62,8 +62,11 @@ from comment_tool.questions import path as questions_path
 
 QUESTIONS = questions_path("questions.round5.json")
 """The current questions: round 4's, with `is_noise` excluding one-sentence doc summaries (Andre, 08:10 CEST)."""
-SOURCE = re.compile(r"\.(py|ts|tsx)$")
-NOT_SOURCE = re.compile(r"\.test\.|\.spec\.|_test\.py$|test-support|generated|\.d\.ts$|__tests__|/e2e/|/tests?/")
+SOURCE = re.compile(r"\.(py|ts|mts|cts|tsx|js|jsx|mjs|cjs)$")
+"""Every suffix the pinned library parses (jev-navigator `LANGUAGE_BY_SUFFIX`), so authored code is
+never silently omitted from the sweep or diff scope."""
+NOT_SOURCE = re.compile(
+    r"\.test\.|\.spec\.|_test\.py$|test-support|generated|\.d\.(?:ts|mts|cts)$|__tests__|/e2e/|/tests?/")
 MAX_UNIT_FILES = 300
 THREE_OUTCOMES = {Outcome.FOUND: "found", Outcome.STOP_RULE: "found", Outcome.NOTHING_LEFT: "searched_not_found",
                   Outcome.BUDGET: "not_yet_inspected", Outcome.UNSURE_ONLY: "not_yet_inspected",

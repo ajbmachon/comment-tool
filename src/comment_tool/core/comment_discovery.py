@@ -14,6 +14,7 @@ from jev_navigator.index.code_index import CodeIndex
 
 from comment_tool.core.comment_facts import facts_of
 from comment_tool.core.comment_review import CommentCase
+from comment_tool.core.definition_fetch import language_of
 from comment_tool.core.extract_cases import comment_prefix
 
 KEPT_BY_CODE = {CommentKind.TOOL_DIRECTIVE}
@@ -33,9 +34,8 @@ def found_comments(index: CodeIndex, files: list[str]) -> list[FoundComment]:
 def _case(block: CommentBlock) -> CommentCase:
     text = comment_text(block)
     file = block.span.file
-    language = "python" if file.endswith(".py") else "typescript"
     facts = classified_facts(text, file, block.kind)
-    return CommentCase(file, block.span.start, block.span.end, text, language, facts)
+    return CommentCase(file, block.span.start, block.span.end, text, language_of(file), facts)
 
 
 def classified_facts(text: str, file: str, kind: str | None) -> dict:
