@@ -35,6 +35,7 @@ from jev_navigator.directives.places import place_for_line
 from jev_navigator.history import FETCHED, HistoryTooLargeError
 from jev_navigator.index import tools
 from jev_navigator.index.code_index import CodeIndex
+from jev_navigator.index.languages import language_of as library_language_of
 from jev_navigator.index.spans import CodeSlice
 from jev_navigator.judgments.client import InputBudgetExceededError
 from jev_navigator.judgments.judge import CallCapReachedError, Judge
@@ -62,8 +63,8 @@ from comment_tool.questions import path as questions_path
 
 QUESTIONS = questions_path("questions.round5.json")
 """The current questions: round 4's, with `is_noise` excluding one-sentence doc summaries (Andre, 08:10 CEST)."""
-SOURCE = re.compile(r"\.(py|ts|tsx)$")
-NOT_SOURCE = re.compile(r"\.test\.|\.spec\.|_test\.py$|test-support|generated|\.d\.ts$|__tests__|/e2e/|/tests?/")
+NOT_SOURCE = re.compile(
+    r"\.test\.|\.spec\.|_test\.py$|test-support|generated|\.d\.(?:ts|mts|cts)$|__tests__|/e2e/|/tests?/")
 MAX_UNIT_FILES = 300
 THREE_OUTCOMES = {Outcome.FOUND: "found", Outcome.STOP_RULE: "found", Outcome.NOTHING_LEFT: "searched_not_found",
                   Outcome.BUDGET: "not_yet_inspected", Outcome.UNSURE_ONLY: "not_yet_inspected",
@@ -89,9 +90,14 @@ Sol stop labels were given (the lead's ruling, 28.09.2026)."""
 STOP_SECTIONS = (FETCHED,)
 
 
+def is_source_file(path: str) -> bool:
+    """The library owns parsed suffixes; the tool owns excluded source populations."""
+    return library_language_of(path) is not None and not NOT_SOURCE.search(path)
+
+
 def source_files(repository: Path, commit: str, parent: str) -> list[str]:
     listed = tools.git(["ls-tree", "-r", "--name-only", commit, "--", parent], repository).splitlines()
-    return [path for path in listed if SOURCE.search(path) and not NOT_SOURCE.search(path)]
+    return [path for path in listed if is_source_file(path)]
 
 
 def sweep_units(files: list[str], parent: str) -> list[tuple[str, list[str]]]:

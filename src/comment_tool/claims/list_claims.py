@@ -135,7 +135,7 @@ def entry_items(index: CodeIndex, file: str, literal: ListLiteral) -> EntryItems
 
 def _entry_names(entry: str, file: str) -> tuple[str, ...]:
     language = language_of(file)
-    return root_names(entry, language, SCRIPT_ENTRY_LABEL if language == "typescript" else None)
+    return root_names(entry, language, None if language == "python" else SCRIPT_ENTRY_LABEL)
 
 
 def checked_list_claim(index: CodeIndex, judge: Judge, case: CommentCase, literal: ListLiteral, row: dict) -> dict:
