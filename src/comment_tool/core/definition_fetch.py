@@ -28,6 +28,8 @@ from jev_navigator.index.languages import language_of as library_language_of
 from jev_navigator.index.spans import CodeSlice, Span
 from jev_navigator.index.tsconfig import ScriptPaths, nearest_script_paths
 
+from comment_tool.claims.ts_parse import ts_parse, typescript_of
+
 UnparsedFiles = Callable[[Path, str, str], frozenset[str]] | None
 """Which files the index for (repository, commit, file) could not parse; the library's by default."""
 
@@ -48,7 +50,6 @@ NOT_NAMES["javascript"] = NOT_NAMES["typescript"]
 STRING = re.compile(r"(?:\b[rRbBuUfF]{1,2})?(?:'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"|`(?:\\.|[^`\\])*`)")
 ROOT_NAME = re.compile(r"(?<![\w.$])[A-Za-z_$][\w$]*")
 KEYWORD_ARGUMENT = re.compile(r"(?<=[(,])\s*[A-Za-z_$][\w$]*\s*=(?!=)|(?<=[(,]\s)[A-Za-z_$][\w$]*\s*=(?!=)")
-SCRIPT_CONDITION = re.compile(r"\b(?:if|while)\s*\(")
 PYTHON_CONDITION = re.compile(r"^\s*(?:if|elif|while)\s+(.+?):\s*(?:#.*)?$")
 CALLED_BY_BINDING = re.compile(r"=\s*(?:await\s+)?(?:new\s+)?([A-Za-z_$][\w$]*)\s*\(")
 
@@ -77,37 +78,24 @@ def language_of(path: str) -> str:
     return "typescript" if language == "tsx" else language
 
 
-def condition_names(line: str, language: str) -> tuple[str, ...]:
-    """The names a condition on this line starts from, in order; members after a dot are left out."""
-    condition = _condition_text(STRING.sub('""', line), language)
-    return () if condition is None else root_names(condition, language)
+def python_condition_names(line: str) -> tuple[str, ...]:
+    """The roots in a Python condition on this line, preserving the existing Python scanner."""
+    condition = PYTHON_CONDITION.match(STRING.sub('""', line))
+    return () if condition is None else python_root_names(condition.group(1))
 
 
-def root_names(code: str, language: str, labels: re.Pattern | None = None) -> tuple[str, ...]:
-    """The names `code` starts from, in order: no members after a dot, keywords, builtins, strings or
-    keyword-argument names; `labels` matches further names that are labels, not references."""
+def python_root_names(code: str) -> tuple[str, ...]:
+    """Python roots in order: no members after a dot, keywords, builtins, strings or argument names."""
     stripped = STRING.sub('""', code)
-    not_references = [KEYWORD_ARGUMENT, *([labels] if labels else [])]
     names = (match.group(0) for match in ROOT_NAME.finditer(stripped)
-             if not any(pattern.match(stripped, match.start()) for pattern in not_references))
-    return tuple(dict.fromkeys(name for name in names if name not in NOT_NAMES[language]))
+             if not KEYWORD_ARGUMENT.match(stripped, match.start()))
+    return tuple(dict.fromkeys(name for name in names if name not in NOT_NAMES["python"]))
 
 
-def _condition_text(line: str, language: str) -> str | None:
-    if language == "python":
-        match = PYTHON_CONDITION.match(line)
-        return match.group(1) if match else None
-    match = SCRIPT_CONDITION.search(line)
-    return _inside_parentheses(line, match.end()) if match else None
-
-
-def _inside_parentheses(text: str, start: int) -> str:
-    depth = 1
-    for position in range(start, len(text)):
-        depth += {"(": 1, ")": -1}.get(text[position], 0)
-        if depth == 0:
-            return text[start:position]
-    return text[start:]
+def script_references(references: Sequence[dict], language: str) -> tuple[tuple[str, int], ...]:
+    """Compiler-owned free references, with the existing language builtin exclusion policy."""
+    return tuple((reference["name"], reference["line"]) for reference in references
+                 if reference["name"] not in NOT_NAMES[language])
 
 
 def local_binding(lines: Sequence[str], name: str, before_line: int, language: str) -> tuple[int, int] | None:
@@ -143,8 +131,13 @@ def _statement_end(lines: Sequence[str], start: int, language: str) -> int:
 def fetch_definitions(repository: Path, commit: str, shown: Span) -> Definitions:
     """Every definition behind the conditions in `shown`; names without one are listed as unresolved."""
     lines = _file_lines(repository, commit, shown.file)
-    named = [(name, number) for number in range(shown.start, shown.end + 1)
-             for name in condition_names(lines[number - 1], language_of(shown.file))]
+    language = language_of(shown.file)
+    if language == "python":
+        named = [(name, number) for number in range(shown.start, shown.end + 1)
+                 for name in python_condition_names(lines[number - 1])]
+    else:
+        parsed = ts_parse(typescript_of(repository), shown.file, "\n".join(lines), shown.start, "conditions", end_line=shown.end)
+        named = script_references(parsed["references"], language)
     return definitions_of(repository, commit, shown, named)
 
 
@@ -215,6 +208,11 @@ def _parameter_of(repository: Path, commit: str, file: str, name: str, line: int
     if function is None:
         return None
     lines = _file_lines(repository, commit, file)
+    if language_of(file) != "python":
+        signature = ts_parse(typescript_of(repository), file, "\n".join(lines), function.start, "parameters")
+        # The index may select a variable containing descendant arrows as an enclosing function.
+        # Only actual parameter bindings, not function/type names in a signature, are evidence.
+        return tuple(signature["lines"]) if name in signature.get("bindings", ()) else None
     end = _parameter_list_end(lines, function.start)
     signature = STRING.sub('""', "\n".join(lines[function.start - 1 : end]))
     return (function.start, end) if re.search(rf"(?<![\w.$]){re.escape(name)}\b", signature) else None

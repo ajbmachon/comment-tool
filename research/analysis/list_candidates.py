@@ -12,7 +12,7 @@ import sys
 from jev_navigator.index import tools
 from jev_navigator.index.code_index import CodeIndex
 
-from comment_tool.claims.list_claims import _entry_names, claims_every_entry, list_claim_for
+from comment_tool.claims.list_claims import claims_every_entry, list_claim_for
 from comment_tool.core.comment_discovery import found_comments
 from comment_tool.core.definition_fetch import language_of
 from research.rounds.sample_round4 import REPOSITORIES, candidate_files
@@ -37,10 +37,10 @@ def main() -> None:
                 literal = list_claim_for(index, found.case) if claims_every_entry(found.case.text) else None
                 if literal is not None:
                     path = found.case.file
-                    named = [entry for entry in literal.entries if _entry_names(entry, path)]
+                    named = sum(bool(references) for references in literal.references)
                     print(json.dumps({"repository": name, "commit": commit, "location": f"{path}:{found.case.first_line}",
                                       "comment": found.case.text, "list": literal.name, "entries": len(literal.entries),
-                                      "named_entries": len(named), "language": language_of(path)}), flush=True)
+                                      "named_entries": named, "language": language_of(path)}), flush=True)
 
 
 if __name__ == "__main__":

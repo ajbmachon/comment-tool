@@ -40,13 +40,12 @@ from comment_tool.core.definition_fetch import (
     definitions_of,
     imported_from_outside,
     language_of,
-    root_names,
+    python_root_names,
+    script_references,
 )
 from comment_tool.questions import path as _qpath
 
 QUANTIFIER = re.compile(r"\b(only|every|all|each|always|never|none)\b", re.IGNORECASE)
-SCRIPT_ENTRY_LABEL = re.compile(r"[A-Za-z_$][\w$]*\s*[:=](?![:=])")
-"""A TypeScript object key or enum member name (`key:` or `Name =`): a label, not a reference."""
 MIN_ENTRIES, MAX_ENTRIES = 2, 60
 CALLER_DECIDES = "comment or list may be wrong, caller decides"
 LIST_CLAIM = "states_condition_for_every_entry"
@@ -60,6 +59,7 @@ class ListLiteral:
     name: str
     entries: tuple[str, ...]
     line: int
+    references: tuple[tuple[tuple[str, int], ...], ...]
 
 
 @dataclass(frozen=True)
@@ -88,7 +88,9 @@ def _python_list(source: str, line: int) -> ListLiteral | None:
         if isinstance(node, ast.Assign | ast.AnnAssign) and node.lineno == line:
             target = node.targets[0] if isinstance(node, ast.Assign) else node.target
             entries = _python_entries(source, node.value)
-            return ListLiteral(ast.unparse(target), entries, line) if entries is not None else None
+            return ListLiteral(ast.unparse(target), entries, line,
+                               tuple(tuple((name, line) for name in python_root_names(entry)) for entry in entries)
+                               ) if entries is not None else None
     return None
 
 
@@ -103,7 +105,9 @@ def _python_entries(source: str, value: ast.expr | None) -> tuple[str, ...] | No
 
 def _typescript_list(source: str, path: str, line: int, typescript: Path) -> ListLiteral | None:
     parsed = ts_parse(typescript, path, source, line, "entries")
-    return ListLiteral(parsed["name"], tuple(parsed["entries"]), line) if parsed["kind"] == "list" else None
+    return ListLiteral(parsed["name"], tuple(parsed["entries"]), line,
+                       tuple(script_references(references, language_of(path)) for references in parsed["references"])
+                       ) if parsed["kind"] == "list" else None
 
 
 def list_claim_for(index: CodeIndex, case: CommentCase) -> ListLiteral | None:
@@ -121,9 +125,9 @@ def with_list_claim_question(questions: QuestionSet) -> QuestionSet:
 def entry_items(index: CodeIndex, file: str, literal: ListLiteral) -> EntryItems:
     """Each entry as B's item, with the definitions of the names it needs, and the names without one."""
     items, fetched, unresolved, unknown = [], [], [], []
-    for entry in literal.entries:
+    for entry, references in zip(literal.entries, literal.references, strict=True):
         found = definitions_of(index.git_root, index.commit, Span(file, literal.line, literal.line),
-                               [(name, literal.line) for name in _entry_names(entry, file)])
+                               references)
         definitions = [{**piece.source(), "code": piece.text} for piece in found.fetched]
         items.append({"code": entry, "definitions": definitions})
         fetched += [piece.source() for piece in found.fetched]
@@ -131,11 +135,6 @@ def entry_items(index: CodeIndex, file: str, literal: ListLiteral) -> EntryItems
                        if not imported_from_outside(index.git_root, index.commit, file, name)]
         unknown += found.unknown
     return EntryItems(tuple(items), tuple(fetched), tuple(dict.fromkeys(unresolved)), tuple(dict.fromkeys(unknown)))
-
-
-def _entry_names(entry: str, file: str) -> tuple[str, ...]:
-    language = language_of(file)
-    return root_names(entry, language, None if language == "python" else SCRIPT_ENTRY_LABEL)
 
 
 def checked_list_claim(index: CodeIndex, judge: Judge, case: CommentCase, literal: ListLiteral, row: dict) -> dict:

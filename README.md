@@ -17,6 +17,14 @@ classifies; the caller acts on the rows.
 - **Rewriting a comment:** [docs/rewrite/PROMPT-DRAFT.md](docs/rewrite/PROMPT-DRAFT.md) is guidance for
   the caller.
 
+## Contents
+
+- [Running](#running)
+- [Layout](#layout) and [reference collection](#reference-collection)
+- [Exchange journal](#exchange-journal)
+- [Tests](#tests)
+- [Scored rounds](#scored-rounds-before-and-after-the-restructure)
+
 ## Running
 
 ```text
@@ -66,6 +74,24 @@ tests/               the suite; `local`-marked tests need the local checkouts an
 Replay scripts retain the sweep's parsed comment kind and use the same fact classifier as live discovery.
 Doc comments therefore remain eligible for rewrite or keep, never removal; historical round-3 packets
 contain only the non-doc comments selected for that round.
+
+### Reference collection
+
+List entry packets and conditional code packets read script references through the existing
+TypeScript compiler bridge in `claims/ts_parse.mjs`. The compiler binds only the supplied source file:
+it does not emit code, run type diagnostics or load imports/libraries. References declared inside a
+selected entry or condition (including arrow parameters and local variables), member names and regex
+tokens need no fetched definition. Shorthand values, computed keys and real external names retain
+their references. The existing builtin exclusion policy and Python collection path are unchanged.
+Script parameter evidence also comes from the compiler's actual parameter bindings, so a list that
+contains arrows and a type name mentioned in a signature cannot masquerade as a parameter.
+Current callers treat compiler facts as read-only. The bridge reuses facts only for identical
+compiler/file/source/line/scope/range inputs; changed source evidence gets a separate parse.
+
+Entries retain their original text and order. Definition acquisition still reads the requested Git
+commit and carries its file/span/commit provenance; an unresolved real helper still escalates. List
+claims still require a qualifying comment immediately describing a list declaration. This reference
+repair does not change that discovery trigger, questions, thresholds or classification policy.
 
 ## Exchange journal
 

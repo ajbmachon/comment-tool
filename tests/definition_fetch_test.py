@@ -8,11 +8,11 @@ from jev_navigator.index.spans import Span
 
 from comment_tool.core.definition_fetch import (
     Definitions,
-    condition_names,
     definitions_of,
     fetch_definitions,
     local_binding,
-    root_names,
+    python_condition_names,
+    python_root_names,
 )
 
 HEEDVANE = Path.home() / "Projects/heedvane"
@@ -20,20 +20,14 @@ HV_H12_COMMIT = "39d8a3dcf6e9d744c329d7c18c8a3d46b8246590"
 HV_H12_FILE = "apps/web/src/app/api/github/attach/route.ts"
 
 
-def test_a_typescript_condition_is_read_from_its_root_names():
-    line = "    if (pendingReferral.shouldClear && !isExpired(at)) response.cookies.delete(REFERRAL_COOKIE_NAME);"
-
-    assert condition_names(line, "typescript") == ("pendingReferral", "isExpired", "at")
-
-
 def test_a_python_condition_leaves_out_keywords_self_and_strings():
     line = '    elif not self.cache and limit > MAX_ITEMS or kind == "full":'
 
-    assert condition_names(line, "python") == ("limit", "MAX_ITEMS", "kind")
+    assert python_condition_names(line) == ("limit", "MAX_ITEMS", "kind")
 
 
 def test_a_line_without_a_condition_has_no_names():
-    assert condition_names("    return response;", "typescript") == ()
+    assert python_condition_names("    return response") == ()
 
 
 def test_a_local_binding_is_found_with_its_whole_statement():
@@ -65,8 +59,7 @@ EN_D09_FILE = "enginepy/hub/event_counts.py"
 
 
 def test_builtins_and_language_globals_need_no_definition():
-    assert condition_names("    if not isinstance(ret, dict) or len(ret) > MAX:", "python") == ("ret", "MAX")
-    assert condition_names("  if (Array.isArray(rows) && Number.isFinite(limit)) {", "typescript") == ("rows", "limit")
+    assert python_condition_names("    if not isinstance(ret, dict) or len(ret) > MAX:") == ("ret", "MAX")
 
 
 @pytest.mark.local
@@ -80,7 +73,7 @@ def test_a_parameter_resolves_to_its_function_signature():
 
 
 def test_string_prefixes_are_part_of_the_string():
-    assert root_names('re.compile(r"(^|/)x$", flags=F"{mode}")', "python") == ("re",)
+    assert python_root_names('re.compile(r"(^|/)x$", flags=F"{mode}")') == ("re",)
 
 
 UNDEFINED_NAME = """def check(x):
@@ -109,3 +102,29 @@ def test_a_name_whose_file_could_not_be_parsed_is_unknown_not_unresolved(tmp_pat
 
 def test_unknown_and_unresolved_names_both_escalate():
     assert Definitions((), ("a",), ("b",)).escalation_reasons() == ["definition not found: a", "definition unknown, file not parsed: b"]
+
+
+SCRIPT_CONDITIONS = """const outer = 3;
+const rows = ["abc"];
+function helper(value) { return value.length; }
+function check({ ready: input }: MISSING) {
+  if (rows.every(({length: outer}) => outer > 0) && /^[a-z]+$/.test(`${outer}`)
+      && Array.isArray(rows) && Number.isFinite(outer) && helper(rows) && input && MISSING) return true;
+  return false;
+}
+"""
+
+
+@pytest.mark.local
+@pytest.mark.parametrize("condition", ["if", "while", "do-while"])
+def test_condition_packets_read_full_expressions_with_lexical_binding_and_template_references(script_repository, condition):
+    source = SCRIPT_CONDITIONS.replace("if (", "while (") if condition == "while" else SCRIPT_CONDITIONS
+    if condition == "do-while":
+        source = source.replace("if (", "do {} while (").replace(") return true;", ");")
+    commit = committed_file(script_repository, "check.ts", source)
+
+    found = fetch_definitions(script_repository, commit, Span("check.ts", 5, 6))
+
+    assert [(piece.span.start, piece.span.end) for piece in found.fetched] == [(2, 2), (1, 1), (3, 3), (4, 4)]
+    assert found.unresolved == ("MISSING",)
+    assert found.unknown == ()

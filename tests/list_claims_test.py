@@ -120,6 +120,7 @@ ROUTES = (READ_ONLY, re.compile(r"x"), make("y"), UNKNOWN, *EXTERNAL)
 
 
 def committed(repository: Path, name: str, text: str) -> str:
+    (repository / name).parent.mkdir(parents=True, exist_ok=True)
     (repository / name).write_text(text)
     for command in (["init", "-q"], ["add", name], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "t"]):
         subprocess.run(["git", *command], cwd=repository, check=True)
@@ -134,3 +135,68 @@ def test_named_entries_carry_their_definitions_and_only_repository_names_without
 
     assert [[d["lines"] for d in item["definitions"]] for item in prepared.items] == [[[3, 3]], [], [[6, 7]], [], []]
     assert prepared.unresolved == ("UNKNOWN",)
+
+
+VIEWS_COMMIT = "f0b4171f8dfcd6683d669e0fcff723ba2206647b"
+VIEWS_FILE = "runtime/agent-runtimes/pi/secret-mask.mjs"
+
+
+@pytest.mark.local
+@pytest.mark.parametrize("missing_helper", [False, True])
+def test_real_views_packet_fetches_helpers_without_arrow_bindings_or_regex_tokens(script_repository, missing_helper):
+    source = git_source(ENGINE, VIEWS_COMMIT, VIEWS_FILE)
+    repository, commit = ENGINE, VIEWS_COMMIT
+    if missing_helper:
+        source = source.replace("function hexForms(bytes)", "function renamedHexForms(bytes)", 1)
+        repository, commit = script_repository, committed(script_repository, VIEWS_FILE, source)
+    literal = list_literal(source, VIEWS_FILE, 412, TYPESCRIPT_COMPILER)
+
+    prepared = entry_items(CodeIndex.at_commit(repository, commit, [VIEWS_FILE]), VIEWS_FILE, literal)
+
+    assert prepared.unresolved == (("hexForms",) if missing_helper else ())
+    assert prepared.unknown == ()
+    assert bool(prepared.escalation_reasons()) == missing_helper
+    assert [[definition["lines"] for definition in item["definitions"]] for item in prepared.items] == [
+        [[380, 382]], [[380, 382]], [] if missing_helper else [[399, 402]],
+        [[404, 407]], [[385, 387]], [[394, 397]],
+    ]
+    assert all(definition["commit"] == commit and definition["file"] == VIEWS_FILE
+               for item in prepared.items for definition in item["definitions"])
+    assert tuple(item["code"] for item in prepared.items) == literal.entries
+
+
+SCRIPT_ENTRIES = """import { EXTERNAL } from "outside";
+const outer = 3;
+const key = 4;
+function helper(value) { return value; }
+const ENTRIES = [
+  ({outer}) => outer,
+  {outer},
+  { [key]: helper(EXTERNAL) },
+  () => { const outer = 1; return outer + MISSING; },
+];
+"""
+
+
+@pytest.mark.local
+def test_script_entry_packets_preserve_shorthand_and_computed_references_but_exclude_shadowed_bindings(script_repository):
+    commit = committed(script_repository, "entries.ts", SCRIPT_ENTRIES)
+    literal = list_literal(SCRIPT_ENTRIES, "entries.ts", 5, TYPESCRIPT_COMPILER)
+
+    prepared = entry_items(CodeIndex.at_commit(script_repository, commit, ["entries.ts"]), "entries.ts", literal)
+
+    assert [[definition["lines"] for definition in item["definitions"]] for item in prepared.items] == [
+        [], [[2, 2]], [[3, 3], [4, 4]], [],
+    ]
+    assert prepared.unresolved == ("MISSING",)
+    assert prepared.unknown == ()
+
+    changed_source = SCRIPT_ENTRIES.replace("() => { const outer", "(MISSING) => { const outer")
+    changed_commit = committed(script_repository, "entries.ts", changed_source)
+    changed_literal = list_literal(changed_source, "entries.ts", 5, TYPESCRIPT_COMPILER)
+
+    changed = entry_items(CodeIndex.at_commit(script_repository, changed_commit, ["entries.ts"]), "entries.ts", changed_literal)
+
+    assert changed.unresolved == ()
+    assert changed.unknown == ()
+    assert all(definition["commit"] == changed_commit for item in changed.items for definition in item["definitions"])
