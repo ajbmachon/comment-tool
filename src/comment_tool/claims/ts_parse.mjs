@@ -1,8 +1,11 @@
-// Static facts about TypeScript source, read with the TypeScript compiler's parser (no type check).
+// Static facts about script source, read with the TypeScript compiler (no emit or type diagnostics).
 // Input on stdin: {typescript, file, source, line, scope}. Scope "declaration" (the default): the
 // signature of the declaration that starts on the line. Scope "module": the file's exported names.
 // Scope "entries": the entries of the list-like literal declared on the line (an array or object
-// literal, an enum, or a union type), as {kind: "list", name, entries}. Output on stdout as JSON, or
+// literal, an enum, or a union type), as {kind: "list", name, entries, references}. Scope "conditions":
+// free references of if/while/do-while conditions starting in [line, end_line]. The compiler binds the one
+// supplied file for reference identity; it does not load imports or libraries. Scope "parameters":
+// actual parameter bindings and signature lines of the callable declared on the line. Output as JSON, or
 // {"kind": "none"} when nothing of that shape starts on the line.
 import { createRequire } from "node:module";
 
@@ -108,14 +111,95 @@ function listEntries(node) {
 
 function listLiteral(node) {
   const entries = node ? listEntries(node) : null;
-  return entries ? { kind: "list", name: nameOf(node), entries: entries.map(textOf) } : { kind: "none" };
+  return entries ? {
+    kind: "list", name: nameOf(node), entries: entries.map(textOf), references: entries.map(freeReferences),
+  } : { kind: "none" };
 }
 
-const declaration = input.scope === "module" ? null : findDeclaration(source);
+let checker;
+function referenceChecker() {
+  if (!checker) {
+    const options = { noLib: true, noResolve: true, allowJs: true };
+    const host = ts.createCompilerHost(options);
+    host.getSourceFile = (file) => file === input.file ? source : undefined;
+    checker = ts.createProgram([input.file], options, host).getTypeChecker();
+  }
+  return checker;
+}
+
+function freeReferences(expression) {
+  const bound = referenceChecker();
+  const found = new Map();
+  const visit = (node) => {
+    if (ts.isIdentifier(node)) {
+      const parent = node.parent;
+      // These names select a member/key/label; computed keys are expressions and are visited.
+      const memberName = (ts.isPropertyAccessExpression(parent) && parent.name === node)
+        || (ts.isQualifiedName(parent) && parent.right === node)
+        || (ts.isBindingElement(parent) && parent.propertyName === node)
+        || ((ts.isLabeledStatement(parent) || ts.isBreakStatement(parent) || ts.isContinueStatement(parent))
+          && parent.label === node);
+      const symbol = ts.isShorthandPropertyAssignment(parent) && parent.name === node
+        ? bound.getShorthandAssignmentValueSymbol(parent) : bound.getSymbolAtLocation(node);
+      const declaredHere = symbol?.declarations?.some((declaration) =>
+        declaration.getSourceFile() === source && declaration.pos >= expression.pos && declaration.end <= expression.end);
+      if (!memberName && !declaredHere && !found.has(node.text)) found.set(node.text, lineOf(node));
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(expression);
+  return [...found].map(([name, line]) => ({ name, line }));
+}
+
+function conditionReferences() {
+  const named = [];
+  const visit = (node) => {
+    if (ts.isIfStatement(node) || ts.isWhileStatement(node) || ts.isDoStatement(node)) {
+      const conditionLine = lineOf(ts.isDoStatement(node) ? node.expression : node);
+      if (conditionLine >= input.line && conditionLine <= input.end_line) named.push(...freeReferences(node.expression));
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return { kind: "conditions", references: named };
+}
+
+function parameterBindings(declaration) {
+  const callable = declaration ? callableOf(declaration) : null;
+  if (!callable || !ts.isFunctionLike(callable)) return { kind: "none" };
+  const bound = referenceChecker();
+  const names = new Set();
+  for (const parameter of callable.parameters) {
+    const visit = (node) => {
+      if (ts.isIdentifier(node)) {
+        const symbol = bound.getSymbolAtLocation(node);
+        if (symbol?.declarations?.some((declared) => declared === parameter
+          || (ts.isBindingElement(declared) && declared.pos >= parameter.pos && declared.end <= parameter.end))) {
+          names.add(node.text);
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(parameter.name);
+  }
+  const signatureEnd = callable.body?.getStart(source) ?? callable.end;
+  const beforeBody = input.source.slice(declaration.getStart(source), signatureEnd).trimEnd();
+  const lastPosition = declaration.getStart(source) + beforeBody.length - 1;
+  return {
+    kind: "parameters", bindings: [...names],
+    lines: [lineOf(declaration), source.getLineAndCharacterOfPosition(lastPosition).line + 1],
+  };
+}
+
+const declaration = ["module", "conditions"].includes(input.scope) ? null : findDeclaration(source);
 if (input.scope === "module") {
   process.stdout.write(JSON.stringify({ kind: "module", exports: moduleExports() }));
+} else if (input.scope === "conditions") {
+  process.stdout.write(JSON.stringify(conditionReferences()));
 } else if (input.scope === "entries") {
   process.stdout.write(JSON.stringify(listLiteral(declaration)));
+} else if (input.scope === "parameters") {
+  process.stdout.write(JSON.stringify(parameterBindings(declaration)));
 } else if (!declaration) {
   process.stdout.write(JSON.stringify({ kind: "none" }));
 } else {
