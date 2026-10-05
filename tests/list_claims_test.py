@@ -16,12 +16,14 @@ from comment_tool.claims.list_claims import (
     LIST_CLAIM,
     claims_every_entry,
     entry_items,
+    list_claim_for,
     list_literal,
 )
 from comment_tool.claims.rewrite_packet import git_source
 from comment_tool.claims.ts_parse import typescript_of
 from comment_tool.cli.sweep import QUESTIONS, judged
 from comment_tool.config import DATA
+from comment_tool.core.comment_discovery import found_comments
 from comment_tool.core.comment_review import question_set
 from research.rounds.run_round4 import case_of
 
@@ -125,6 +127,57 @@ def committed(repository: Path, name: str, text: str) -> str:
     for command in (["init", "-q"], ["add", name], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "t"]):
         subprocess.run(["git", *command], cwd=repository, check=True)
     return subprocess.run(["git", "rev-parse", "HEAD"], cwd=repository, capture_output=True, text=True, check=True).stdout.strip()
+
+
+def ignored_paths() -> tuple[str, ...]:
+    """Sixty paths that each name one file, in the two lengths this repository really uses, and one
+    folder glob, so the list carries a last entry the comment's own words cannot be true of."""
+    return (*(f"./pkg/leaf_{i}.py" for i in range(30)),
+            *(f"./services/billing/api/handlers/deeply/nested/module_{i}.py" for i in range(30)),
+            "**/vendor/**/*")
+
+
+def long_list_source() -> str:
+    """Those 61 entries as one literal, below a comment that names a condition each entry must meet."""
+    entries = "".join(f'    "{entry}",\n' for entry in ignored_paths())
+    return ("# Every path here is matched against one file name, never a folder path or a glob.\n"
+            f"IGNORED_PATHS = (\n{entries})\n")
+
+
+def scripted_long_list_answers(question_id: str, _question: dict, state: dict) -> float:
+    """Yes for the claim itself; for each entry, no only where the path really is a folder or a glob
+    (the last entry) and yes for every single file name; every other question is answered no."""
+    if question_id.startswith(LIST_CLAIM):
+        return 0.95
+    if question_id.startswith(ENTRY_CHECK.name):
+        index = int(question_id.rsplit("#", 1)[1])
+        return 0.0 if "*" in state["items"][index]["code"] else 0.95
+    return 0.0
+
+
+def test_a_list_of_sixty_one_entries_is_still_judged_entry_by_entry(tmp_path):
+    """No entry cap: a long list is asked about in as many batches as the state budget needs, from its
+    first entry to its last, instead of being written off for its length."""
+    commit = committed(tmp_path, "pkg/registry.py", long_list_source())
+    files = ["pkg/registry.py"]
+    index = CodeIndex.at_commit(tmp_path, commit, files)
+    found = found_comments(index, files)
+    assert len(found) == 1 and found[0].kind == "header"
+    case = found[0].case
+    literal = list_claim_for(index, case)
+    assert literal is not None and len(literal.entries) == 61 and len(set(literal.entries)) == 61
+    client = ScriptedJevClient(nouls=scripted_long_list_answers)
+
+    row = judged(index, Judge(client), case, question_set(json.loads(QUESTIONS.read_text())))
+
+    glob = '"**/vendor/**/*"'  # the last entry, as the parser reads it: quotes and all
+    assert "list_claim" in row, row.get("escalate")
+    assert len(row["list_claim"]["entries"]) == 61
+    assert row["list_claim"]["failing"] == [glob] and row["list_claim"]["entries"][glob] == 0.0
+    assert row["action"] == "fix_stale" and row["list_claim"]["caller_decides"] == CALLER_DECIDES
+    batches = client.requests[1:]
+    assert len(batches) > 1 and sum(len(asked) for _, asked in batches) == 61
+    assert all(len(state["items"]) == len(asked) for state, asked in batches)
 
 
 def test_named_entries_carry_their_definitions_and_only_repository_names_without_one_are_unresolved(tmp_path):
