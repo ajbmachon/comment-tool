@@ -6,11 +6,11 @@ single list-like literal with at least two entries, read with the language's par
 list, set or dict; a TypeScript array, object, enum or union type). Question A (`LIST_CLAIM`) joins
 the comment's first request. When A is yes, question B (`ENTRY_CHECK`) is asked once per entry
 through the library's `check_each`, and `compose.list_claim` combines the answers: one entry that
-surely fails the condition makes the comment stale. An entry that is, or holds, a name (a constant, a
+surely fails the condition makes the comment stale. Entry count does not exclude entries:
+`check_each` owns request packing. An entry that is, or holds, a name (a constant, a
 spread, a call's argument, a first-party callee) carries the definitions `definition_fetch` finds for
 those names; a name without one escalates (also one the library calls unknown because its file was
-not parsed), as does a list longer than `MAX_ENTRIES`. A name imported
-from a package outside the repository, a function (`re.compile`) or a value (an icon), passes as it
+not parsed). A name imported from a package outside the repository, a function (`re.compile`) or a value (an icon), passes as it
 is and needs no definition (lead, 28.09.2026). A failing list is only proposed: the entries disagree
 with the comment, but either side may be wrong, so the row says the caller decides (Andre, 28.09.2026:
 "Only propose").
@@ -46,7 +46,7 @@ from comment_tool.core.definition_fetch import (
 from comment_tool.questions import path as _qpath
 
 QUANTIFIER = re.compile(r"\b(only|every|all|each|always|never|none)\b", re.IGNORECASE)
-MIN_ENTRIES, MAX_ENTRIES = 2, 60
+MIN_ENTRIES = 2
 CALLER_DECIDES = "comment or list may be wrong, caller decides"
 LIST_CLAIM = "states_condition_for_every_entry"
 _CHECKS = {check.name: check for check in
@@ -139,8 +139,6 @@ def entry_items(index: CodeIndex, file: str, literal: ListLiteral) -> EntryItems
 
 def checked_list_claim(index: CodeIndex, judge: Judge, case: CommentCase, literal: ListLiteral, row: dict) -> dict:
     """Asks B for each entry when A is yes, and applies `compose.list_claim` to the row."""
-    if len(literal.entries) > MAX_ENTRIES:
-        return with_escalation(row, [f"list too long ({len(literal.entries)} entries)"])
     claim_probability = row["probabilities"][LIST_CLAIM]
     if claim_probability < compose.CUTOFF:
         return with_escalation(row, list(compose.list_claim(claim_probability, {}).reasons))

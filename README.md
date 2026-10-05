@@ -93,6 +93,9 @@ commit and carries its file/span/commit provenance; an unresolved real helper st
 claims still require a qualifying comment immediately describing a list declaration. This reference
 repair does not change that discovery trigger, questions, thresholds or classification policy.
 
+List claims check every parsed entry through JVN’s request packing; entry count does not exclude
+entries. Missing definitions still escalate, and proposed changes remain the caller’s decision.
+
 ## Exchange journal
 
 Every classification exchange records its native submitted request in `journal.jsonl`, bound by
