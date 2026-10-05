@@ -85,6 +85,8 @@ tokens need no fetched definition. Shorthand values, computed keys and real exte
 their references. The existing builtin exclusion policy and Python collection path are unchanged.
 Script parameter evidence also comes from the compiler's actual parameter bindings, so a list that
 contains arrows and a type name mentioned in a signature cannot masquerade as a parameter.
+Current callers treat compiler facts as read-only. The bridge reuses facts only for identical
+compiler/file/source/line/scope/range inputs; changed source evidence gets a separate parse.
 
 Entries retain their original text and order. Definition acquisition still reads the requested Git
 commit and carries its file/span/commit provenance; an unresolved real helper still escalates. List

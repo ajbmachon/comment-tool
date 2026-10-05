@@ -190,3 +190,13 @@ def test_script_entry_packets_preserve_shorthand_and_computed_references_but_exc
     ]
     assert prepared.unresolved == ("MISSING",)
     assert prepared.unknown == ()
+
+    changed_source = SCRIPT_ENTRIES.replace("() => { const outer", "(MISSING) => { const outer")
+    changed_commit = committed(script_repository, "entries.ts", changed_source)
+    changed_literal = list_literal(changed_source, "entries.ts", 5, TYPESCRIPT_COMPILER)
+
+    changed = entry_items(CodeIndex.at_commit(script_repository, changed_commit, ["entries.ts"]), "entries.ts", changed_literal)
+
+    assert changed.unresolved == ()
+    assert changed.unknown == ()
+    assert all(definition["commit"] == changed_commit for item in changed.items for definition in item["definitions"])
