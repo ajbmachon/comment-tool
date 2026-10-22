@@ -23,6 +23,8 @@ packages = ["src/comment_tool"]
 artifacts = ["**/*.mjs"]
 
 [tool.uv]
+exclude-newer = "7 days"
+exclude-newer-package = { certifi = false }
 package = true
 
 [project.scripts]
