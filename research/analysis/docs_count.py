@@ -10,6 +10,22 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Read a repository commit and source files under the parent directory; "
+            "print doc-comment counts to stdout."
+        )
+    )
+    parser.add_argument("repository", help="repository directory")
+    parser.add_argument("commit", help="commit to inspect")
+    parser.add_argument(
+        "parent", help="parent directory within the repository to scan"
+    )
+    parser.parse_args()
+
 from jev_navigator.comments import CommentBlock, find_comments
 from jev_navigator.index.code_index import CodeIndex
 
