@@ -7,6 +7,16 @@ why it stopped, and which of the three outcomes it reached. Nothing is recompute
 usage: python3 export_traces.py <sweep dir> <out json> <location> [<location> ...]
 """
 
+if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(
+        usage=("%(prog)s <sweep dir> <out json> <location> [<location> ...]"),
+        description=("Reads apps-*.jsonl and answers.jsonl from a sweep directory plus frozen rule/tool "
+                     "data under COMMENT_TOOL_DATA; exports traces for the requested locations to the JSON "
+                     "output file and prints the stored-rule check summary."),
+    ).parse_known_args()
+
 import hashlib
 import json
 import sys

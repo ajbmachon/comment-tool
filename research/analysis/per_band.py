@@ -14,6 +14,15 @@ calling agent instead, right and wrong.
 usage: python3 per_band.py
 """
 
+if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(
+        description=("Reads stored round-3, round-4, docs, and docs2 cases, answers, and labels under "
+                     "COMMENT_TOOL_DATA together with the frozen round-3 rule; prints confidence-band "
+                     "and stale-verdict summaries to stdout.")
+    ).parse_known_args()
+
 import json
 import sys
 from collections import defaultdict

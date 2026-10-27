@@ -6,6 +6,17 @@ Intended uses for the other questions are taken, by question name, from the roun
 usage: uv run python meta_list_claims.py <out dir>
 """
 
+if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(
+        usage="%(prog)s <out dir>",
+        description=("Reads the stored round-4 en-h11 case and meta-round4 intended uses under "
+                     "COMMENT_TOOL_DATA, the package question definitions, and the case's repository "
+                     "revision; writes candidate-*.json review files into the output directory and "
+                     "prints the request count.")
+    ).parse_known_args()
+
 import json
 import sys
 from pathlib import Path

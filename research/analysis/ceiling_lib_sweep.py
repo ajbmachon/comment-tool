@@ -7,6 +7,15 @@ at least two places can show that. The stop question is asked live; nothing else
 usage: uv run python ceiling_lib_sweep.py
 """
 
+if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(
+        description=("Reads the stored lib sweep under COMMENT_TOOL_DATA/pass/lib-a3bde2aa-rebuilt, "
+                     "asks Jev's stop question over growing histories, writes "
+                     "COMMENT_TOOL_DATA/ceiling/curves.jsonl, and prints the live call count.")
+    ).parse_known_args()
+
 import json
 from collections import defaultdict
 

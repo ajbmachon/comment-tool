@@ -7,6 +7,15 @@ exact run asked twice (the journal holds both exchanges); a difference beyond th
 usage: uv run python gate_exact_compare.py
 """
 
+if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(
+        description=("Reads the stored gate-replay and gate-replay-exact packets and journal under "
+                     "COMMENT_TOOL_DATA, compares their probabilities with the current rule, and prints "
+                     "the comparison to stdout.")
+    ).parse_known_args()
+
 import base64
 import json
 from collections import Counter, defaultdict
