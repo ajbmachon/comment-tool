@@ -8,6 +8,19 @@ one detail when two or more clauses are details. It is mechanical and crude, and
 usage: python3 multi_detail.py
 """
 
+import argparse
+import sys
+
+
+def _help_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description='Count round-4 comments that name multiple checkable details.', epilog='Reads round4/cases.jsonl from COMMENT_TOOL_DATA; prints counts and a JSON summary to stdout.')
+    return parser
+
+
+# Handle help before importing project modules that load research data.
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    _help_parser().parse_known_args()
+
 import json
 import re
 

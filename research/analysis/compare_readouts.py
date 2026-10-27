@@ -5,6 +5,19 @@ reported so cut-offs can later be fitted on Sol labels and checked on held-out c
 usage: python3 compare_readouts.py
 """
 
+import argparse
+import sys
+
+
+def _help_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description='Compare Jev readouts with blind Sol labels.', epilog='Reads sol-labels.jsonl, cases.jsonl, and run/*.json from COMMENT_TOOL_DATA; prints agreement summaries to stdout.')
+    return parser
+
+
+# Handle help before importing project modules that load research data.
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    _help_parser().parse_known_args()
+
 import json
 from collections import Counter
 

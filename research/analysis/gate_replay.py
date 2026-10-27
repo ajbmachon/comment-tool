@@ -7,6 +7,19 @@ the lib sweep asked one stale question, not the three the gate reads, so their a
 usage: python3 gate_replay.py
 """
 
+import argparse
+import sys
+
+
+def _help_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description='Replay the search gate on stored escalations without model calls.', epilog='Reads round4/pass.jsonl from COMMENT_TOOL_DATA; prints replay summaries to stdout.')
+    return parser
+
+
+# Handle help before importing project modules that load research data.
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    _help_parser().parse_known_args()
+
 import json
 from collections import Counter
 
