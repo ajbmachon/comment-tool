@@ -6,7 +6,12 @@ usage: python3 compare_labels.py
 """
 
 import argparse
+import json
 import sys
+from collections import Counter
+from pathlib import Path
+
+from comment_tool.config import DATA
 
 
 def _help_parser() -> argparse.ArgumentParser:
@@ -14,15 +19,9 @@ def _help_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# Handle help before importing project modules that load research data.
+# Handle help before starting any analysis work.
 if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
     _help_parser().parse_known_args()
-
-import json
-from collections import Counter
-from pathlib import Path
-
-from comment_tool.config import DATA
 
 VALUE = ("explains_hard_code", "states_hidden_rule", "teaches_needed_knowledge", "points_to_owner")
 A_TO_ACTION = {"stale_fix": "fix_stale", "rename_or_extract": "refactor_instead", "removal": "remove",

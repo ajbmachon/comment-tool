@@ -9,7 +9,12 @@ usage: python3 multi_detail.py
 """
 
 import argparse
+import json
+import re
 import sys
+
+from comment_tool.config import DATA
+from comment_tool.core.extract_cases import comment_body, comment_prefix
 
 
 def _help_parser() -> argparse.ArgumentParser:
@@ -17,15 +22,9 @@ def _help_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# Handle help before importing project modules that load research data.
+# Handle help before starting any analysis work.
 if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
     _help_parser().parse_known_args()
-
-import json
-import re
-
-from comment_tool.config import DATA
-from comment_tool.core.extract_cases import comment_body, comment_prefix
 
 CLAUSE_BREAK = re.compile(r"(?<=[.;:])\s+|\s+[—–-]{1,2}\s+")
 CHECKABLE = re.compile(

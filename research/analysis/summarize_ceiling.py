@@ -8,7 +8,11 @@ usage: python3 summarize_ceiling.py
 """
 
 import argparse
+import json
 import sys
+
+from comment_tool.config import DATA
+from research.analysis.ceiling_lib_sweep import searched_more_than_once
 
 
 def _help_parser() -> argparse.ArgumentParser:
@@ -16,14 +20,9 @@ def _help_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# Handle help before importing project modules that load research data.
+# Handle help before starting any analysis work.
 if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
     _help_parser().parse_known_args()
-
-import json
-
-from comment_tool.config import DATA
-from research.analysis.ceiling_lib_sweep import searched_more_than_once
 
 YES_AT = 0.8
 
