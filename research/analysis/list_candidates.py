@@ -6,28 +6,32 @@ whether any entry is, or holds, a name.
 usage: uv run python list_candidates.py > <out.jsonl>
 """
 
+import argparse
 import json
 import sys
-
-from jev_navigator.index import tools
-from jev_navigator.index.code_index import CodeIndex
-
-from comment_tool.claims.list_claims import claims_every_entry, list_claim_for
-from comment_tool.core.comment_discovery import found_comments
-from comment_tool.core.definition_fetch import language_of
-from research.rounds.sample_round4 import REPOSITORIES, candidate_files
 
 QUANTIFIED_COMMENT = r"(#|//|\*).*(only|every|all|each|always|never|none)"
 CHUNK = 300
 
 
 def quantified_files(repository, commit: str, include, exclude) -> list[str]:
+    from jev_navigator.index import tools
+
+    from research.rounds.sample_round4 import candidate_files
     listed = tools.git(["grep", "-l", "-i", "-E", QUANTIFIED_COMMENT, commit, "--"], repository).splitlines()
     wanted = set(candidate_files(repository, commit, include, exclude))
     return sorted(path.split(":", 1)[1] for path in listed if path.split(":", 1)[1] in wanted)
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Read configured repository commits and print matching list-claim comments as JSONL to stdout.")
+    parser.parse_args()
+    from jev_navigator.index.code_index import CodeIndex
+
+    from comment_tool.claims.list_claims import claims_every_entry, list_claim_for
+    from comment_tool.core.comment_discovery import found_comments
+    from comment_tool.core.definition_fetch import language_of
+    from research.rounds.sample_round4 import REPOSITORIES
     for name, (repository, commit, _, include, exclude) in REPOSITORIES.items():
         files = quantified_files(repository, commit, include, exclude)
         for start in range(0, len(files), CHUNK):

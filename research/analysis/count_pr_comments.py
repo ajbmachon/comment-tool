@@ -10,24 +10,20 @@ time per request is read from the stored journals.
 usage: uv run python count_pr_comments.py <repository>=<pr>:<merge commit> ...
 """
 
+import argparse
 import json
 import statistics
-import sys
 from datetime import datetime
 from pathlib import Path
-
-from jev_navigator.index.code_index import CodeIndex
-
-from comment_tool.claims.list_claims import list_claim_for
-from comment_tool.cli.classify import changed_lines, is_touched
-from comment_tool.config import DATA
-from comment_tool.core.comment_discovery import code_decision, found_comments
 
 PROJECTS = Path.home() / "Projects"
 INDEX_FILES = 300
 
 
 def pr_counts(repository: Path, merge: str) -> dict:
+    from comment_tool.claims.list_claims import list_claim_for
+    from comment_tool.cli.classify import changed_lines
+    from comment_tool.core.comment_discovery import code_decision
     touched = changed_lines(repository, f"{merge}^1", merge)
     files = sorted(touched)
     comments = [found for start in range(0, len(files), INDEX_FILES)
@@ -40,12 +36,16 @@ def pr_counts(repository: Path, merge: str) -> dict:
 
 
 def _touched_in(repository: Path, commit: str, files: list[str], touched: dict) -> list:
+    from jev_navigator.index.code_index import CodeIndex
     index = CodeIndex.at_commit(repository, commit, files)
+    from comment_tool.cli.classify import is_touched
+    from comment_tool.core.comment_discovery import found_comments
     return [(found, index) for found in found_comments(index, files) if is_touched(index, found, touched)]
 
 
 def jev_seconds() -> list[float]:
     """Seconds from each stored Jev request to its response, over every journal kept here."""
+    from comment_tool.config import DATA
     seconds = []
     for journal in DATA.rglob("journal.jsonl"):
         sent = {}
@@ -59,7 +59,11 @@ def jev_seconds() -> list[float]:
 
 
 def main() -> None:
-    for argument in sys.argv[1:]:
+    parser = argparse.ArgumentParser(description="Read repository commits and stored Jev journals; print per-PR counts and request timing summaries as JSONL.")
+    parser.add_argument("pull_requests", nargs="*", metavar="REPOSITORY=PR:MERGE",
+                        help="repository name, pull request number, and merge commit to inspect (repeatable)")
+    args = parser.parse_args()
+    for argument in args.pull_requests:
         name, rest = argument.split("=")
         number, merge = rest.split(":")
         print(json.dumps({"repository": name, "pr": int(number), "merge": merge, **pr_counts(PROJECTS / name, merge)}))

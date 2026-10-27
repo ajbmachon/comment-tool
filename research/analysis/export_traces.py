@@ -7,6 +7,7 @@ why it stopped, and which of the three outcomes it reached. Nothing is recompute
 usage: python3 export_traces.py <sweep dir> <out json> <location> [<location> ...]
 """
 
+import argparse
 import hashlib
 import json
 import sys
@@ -14,14 +15,6 @@ from collections import Counter
 from pathlib import Path
 
 from comment_tool.config import DATA
-
-sys.path.insert(0, str(DATA / "round3"))
-from compose_frozen import (  # the rule round 3 and the lib sweep were measured with
-    CUTOFF,
-    ESCALATION_BAND,
-    decision_path,
-)
-
 from comment_tool.core.extract_cases import code_facts, comment_prefix
 
 EXCERPT_CHARS = 160
@@ -31,6 +24,14 @@ SEARCH_PREFIX = "the code this comment describes: "
 FOUND_BY_CODE = "found: code located the attached code; no search ran"
 DESCRIBED = "found: code_described_by_comment supplied the described code; no search ran"
 KEPT_BY_CODE = "docstring, jsdoc, header, tool_directive and declaration comments are kept by code"
+
+
+def _compose_frozen():
+    frozen_dir = str(DATA / "round3")
+    if frozen_dir not in sys.path:
+        sys.path.insert(0, frozen_dir)
+    import compose_frozen  # the rule round 3 and the lib sweep were measured with
+    return compose_frozen
 
 
 def excerpt(text: str) -> str:
@@ -83,6 +84,7 @@ def discovery_step(row: dict) -> dict:
 
 
 def judgment_steps(row: dict, record: dict, label: str, retried: bool = False) -> list[dict]:
+    frozen = _compose_frozen()
     state = record["request"]["state"]
     evidence = row["evidence"]
     judge_step = {
@@ -95,14 +97,14 @@ def judgment_steps(row: dict, record: dict, label: str, retried: bool = False) -
         "rule": "one request, all questions over the same state", "decision": "answers recorded", "next": "apply rule A",
         "outcome": None,
     }
-    low, high = ESCALATION_BAND
+    low, high = frozen.ESCALATION_BAND
     facts = code_facts(row["comment"].split("\n"), comment_prefix(row["location"].rsplit(":", 1)[0]))
-    path = decision_path(row["probabilities"], facts)
+    path = frozen.decision_path(row["probabilities"], facts)
     rule_step = {
         "step": f"rule A ({label})",
         "input": {"code_facts": facts},
         "questions": [], "raw_probabilities": path,
-        "rule": f"compose.readout_a at cut-off {CUTOFF}; escalate when a decision-path value lies strictly between {low} and {high}",
+        "rule": f"compose.readout_a at cut-off {frozen.CUTOFF}; escalate when a decision-path value lies strictly between {low} and {high}",
         "decision": row["action"] + (f"; escalate: {row['escalate']['reasons']}" if "escalate" in row else ""),
         "next": _after_rule(row, retried),
         "outcome": None if "escalate" in row and not retried else row.get("search", {}).get("outcome", DESCRIBED),
@@ -191,12 +193,22 @@ def provenance(records: list[dict]) -> dict:
 
 def stored_path_matches(row: dict) -> bool:
     """The exporter's recomputed rule path equals the one the sweep stored for its final answer."""
+    frozen = _compose_frozen()
     facts = code_facts(row["comment"].split("\n"), comment_prefix(row["location"].rsplit(":", 1)[0]))
-    return decision_path(row["probabilities"], facts) == row["decision_path"]
+    return frozen.decision_path(row["probabilities"], facts) == row["decision_path"]
 
 
 def main() -> None:
-    sweep, out, locations = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3:]
+    parser = argparse.ArgumentParser(
+        description=("Export trace JSON for selected stored sweep locations. Reads apps-*.jsonl and answers.jsonl "
+                     "from the sweep directory, frozen round-3 rules and tool files under COMMENT_TOOL_DATA; "
+                     "writes the trace document to the output JSON path and prints a summary to stdout.")
+    )
+    parser.add_argument("sweep_dir", type=Path, help="directory containing the stored sweep rows and answers.jsonl")
+    parser.add_argument("out_json", type=Path, help="JSON file to write (its parent directory is created if needed)")
+    parser.add_argument("locations", nargs="*", help="comment locations to include in the export")
+    args = parser.parse_args()
+    sweep, out, locations = args.sweep_dir, args.out_json, args.locations
     rows = {row["location"]: row for path in sweep.glob("apps-*.jsonl") for row in map(json.loads, path.read_text().splitlines())}
     all_records = load_records(sweep)
     by_hash = {record["request_sha256"]: record for record in all_records}

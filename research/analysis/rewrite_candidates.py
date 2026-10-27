@@ -7,6 +7,7 @@ the engine at the round-3 commit. Every exchange is journaled.
 usage: uv run python rewrite_candidates.py
 """
 
+import argparse
 import json
 import re
 
@@ -46,6 +47,12 @@ def candidates(name: str, used: set[str]):
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=("Find doc comments that the rules send to rewrite for the rewrite-packet pilot. "
+                     "Reads saved docs cases and repository histories, asks Jev on candidate comments, and "
+                     "writes cases.jsonl, pass.jsonl and the request journal under COMMENT_TOOL_DATA/docs-rewrite.")
+    )
+    parser.parse_args()
     OUT.mkdir(exist_ok=True)
     used = used_paths() | round4_paths() | validation_paths()
     questions = question_set(json.loads(ROUND4_QUESTIONS.read_text()))

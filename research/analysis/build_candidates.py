@@ -4,9 +4,9 @@ Cases code decides alone (file headers, tool directives, declaration docs, comme
 usage: python3 build_candidates.py cases.jsonl questions.json candidates/
 """
 
+import argparse
 import json
 import pathlib
-import sys
 
 VALUE_USE = "One of four value answers; their maximum is the comment's usefulness score."
 HARD_USE = "Together with the other half, as their minimum, the explains-hard-code value; never used alone."
@@ -152,7 +152,12 @@ def candidate(case: dict, questions: dict) -> dict:
 
 
 def main() -> None:
-    cases_path, questions_path, out_dir = sys.argv[1:4]
+    parser = argparse.ArgumentParser(description="Read cases JSONL and questions JSON; write one candidate JSON file per model-bound case.")
+    parser.add_argument("cases", help="input cases JSONL file")
+    parser.add_argument("questions", help="input questions JSON file")
+    parser.add_argument("out_dir", help="directory to create and write candidate JSON files into")
+    args = parser.parse_args()
+    cases_path, questions_path, out_dir = args.cases, args.questions, args.out_dir
     questions = json.loads(pathlib.Path(questions_path).read_text())
     out = pathlib.Path(out_dir)
     out.mkdir(exist_ok=True)

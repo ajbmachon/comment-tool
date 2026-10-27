@@ -14,6 +14,7 @@ calling agent instead, right and wrong.
 usage: python3 per_band.py
 """
 
+import argparse
 import json
 import sys
 from collections import defaultdict
@@ -21,9 +22,6 @@ from pathlib import Path
 
 import comment_tool.core.compose as compose
 from comment_tool.config import DATA
-
-sys.path.insert(0, str(DATA / "round3"))
-import compose_frozen  # the round-3 rule, with its single stale question
 
 SOL_TRUTH = {"true": 1.0, "false": 0.0, "ambiguous": 0.5}
 BANDS = ((0.6, 0.7), (0.7, 0.8), (0.8, 0.9), (0.9, 1.01))
@@ -41,6 +39,9 @@ def sol(label: dict) -> dict:
 
 
 def round3() -> list[dict]:
+    sys.path.insert(0, str(DATA / "round3"))
+    import compose_frozen  # the round-3 rule, with its single stale question
+
     cases = rows(DATA / "round3" / "cases.jsonl")
     labels = rows(DATA / "round3-nav-described" / "sol-labels.fresh.jsonl")
     runs = (json.loads(path.read_text()) for path in (DATA / "round3-nav-described" / "run").glob("*.json"))
@@ -119,6 +120,12 @@ def bar_lines(entries: list[dict]) -> list[str]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=("Print accuracy by confidence band for stored round 3, round 4 and docs answers against "
+                     "Sol labels. Reads the corresponding cases, pass, labels and stored run JSON under "
+                     "COMMENT_TOOL_DATA; writes the report to stdout.")
+    )
+    parser.parse_args()
     rounds = [round3(), round4(), doc_round("docs 1", "docs"), doc_round("docs 2", "docs2")]
     everything = [e for entries in rounds for e in entries]
     for entries in [*rounds, everything]:

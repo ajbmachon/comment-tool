@@ -7,11 +7,9 @@ the lib sweep asked one stale question, not the three the gate reads, so their a
 usage: python3 gate_replay.py
 """
 
+import argparse
 import json
 from collections import Counter
-
-import comment_tool.core.compose as compose
-from comment_tool.config import DATA
 
 STORED = {"round 4": ["round4/pass.jsonl"]}
 
@@ -29,8 +27,9 @@ def reasons(row: dict) -> list[str]:
 
 
 def replayed(row: dict) -> dict:
+    from comment_tool.core.compose import search_could_settle
     searched_before = "search" in row
-    searched_now = compose.search_could_settle(first_answer(row)["probabilities"])
+    searched_now = search_could_settle(first_answer(row)["probabilities"])
     settled_by_search = row.get("decided_by") == "jev+rule after find_code"
     return {"location": row.get("location", row.get("case_id")), "reasons": reasons(row),
             "searched_before": searched_before, "searched_now": searched_now,
@@ -39,10 +38,13 @@ def replayed(row: dict) -> dict:
 
 
 def rows_of(paths: list[str]) -> list[dict]:
+    from comment_tool.config import DATA
     return [json.loads(line) for path in paths for line in (DATA / path).read_text().splitlines()]
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Read round4/pass.jsonl from COMMENT_TOOL_DATA; print stored versus replayed search decisions to stdout.")
+    parser.parse_args()
     for name, paths in STORED.items():
         cases = [replayed(row) for row in rows_of(paths) if escalated_first(row)]
         print(f"{name}: {len(cases)} escalated on the first answer; searched before {sum(c['searched_before'] for c in cases)}, "

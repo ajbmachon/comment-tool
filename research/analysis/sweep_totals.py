@@ -4,8 +4,8 @@ which comments two sweeps of the same commit share.
 usage: python3 sweep_totals.py <sweep dir> [--compare <other sweep dir>]
 """
 
+import argparse
 import json
-import sys
 from collections import Counter
 from pathlib import Path
 
@@ -40,7 +40,11 @@ def search_summary(rows: list[dict]) -> Counter:
 
 
 def main() -> None:
-    sweep = Path(sys.argv[1])
+    parser = argparse.ArgumentParser(description="Read sweep JSONL files and print action totals and search outcomes to stdout.")
+    parser.add_argument("sweep", type=Path, help="sweep directory containing apps-*.jsonl files")
+    parser.add_argument("--compare", type=Path, metavar="OTHER", help="compare comment locations with another sweep directory")
+    args = parser.parse_args()
+    sweep = args.sweep
     units = unit_rows(sweep)
     rows = [row for unit in units.values() for row in unit]
     print(table(units))
@@ -49,8 +53,8 @@ def main() -> None:
         print("\nWhole-line comments only (the labelled population):")
         print(table(units, lambda row: row["kind"] in REVIEWED_KINDS))
     print("\nSearches:", dict(search_summary(rows)))
-    if "--compare" in sys.argv:
-        other = [row for unit in unit_rows(Path(sys.argv[sys.argv.index("--compare") + 1])).values() for row in unit]
+    if args.compare is not None:
+        other = [row for unit in unit_rows(args.compare).values() for row in unit]
         mine, theirs = {row["location"] for row in rows}, {row["location"] for row in other}
         print(f"\nLocations: {len(mine & theirs)} in both, {len(mine - theirs)} only here, {len(theirs - mine)} only in the other")
 

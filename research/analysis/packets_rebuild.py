@@ -5,16 +5,10 @@ packets from git objects and compare their JSON bytes with the stored ones.
 usage: uv run python packets_rebuild.py
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
-
-from comment_tool.config import DATA
-from comment_tool.core.comment_review import MEASURED_CONTEXT, comment_state
-from research.rounds.run_round4 import case_of, index_of
-
-LABELLED = tuple(DATA / name / "cases.jsonl" for name in ("round3-nav-described", "round4", "docs", "docs2", "round6"))
-"""The packets the current Sol labels were given: round 3's fresh labels, round 4's, both doc rounds' and round 6's."""
 
 
 def packet_bytes(state: dict) -> bytes:
@@ -22,6 +16,8 @@ def packet_bytes(state: dict) -> bytes:
 
 
 def rebuilt(raw: dict) -> dict:
+    from comment_tool.core.comment_review import MEASURED_CONTEXT, comment_state
+    from research.rounds.run_round4 import case_of, index_of
     case = case_of(raw)
     return comment_state(case, *MEASURED_CONTEXT(index_of(raw), case))
 
@@ -32,8 +28,12 @@ def differing(path: Path) -> tuple[int, list[str]]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Read stored labelled case packets and repository git data; print byte-comparison results to stdout.")
+    parser.parse_args()
+    from comment_tool.config import DATA
+    labelled = tuple(DATA / name / "cases.jsonl" for name in ("round3-nav-described", "round4", "docs", "docs2", "round6"))
     failed = False
-    for path in LABELLED:
+    for path in labelled:
         total, different = differing(path)
         print(f"{path.parent.name}: {total - len(different)} of {total} packets byte-identical; different: {different}")
         failed = failed or bool(different)
