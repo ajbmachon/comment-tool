@@ -7,10 +7,22 @@ where more history stops changing the answer, not whether the answer is right.
 usage: python3 summarize_ceiling.py
 """
 
+import argparse
 import json
+import sys
 
 from comment_tool.config import DATA
 from research.analysis.ceiling_lib_sweep import searched_more_than_once
+
+
+def _help_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description='Summarise replayed history curves and where stop answers stop changing.', epilog='Reads ceiling/curves.jsonl and pass/lib-a3bde2aa-rebuilt/apps-*.jsonl from COMMENT_TOOL_DATA; prints curve summaries to stdout.')
+    return parser
+
+
+# Handle help before starting any analysis work.
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    _help_parser().parse_known_args()
 
 YES_AT = 0.8
 

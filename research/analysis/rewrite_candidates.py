@@ -7,8 +7,19 @@ the engine at the round-3 commit. Every exchange is journaled.
 usage: uv run python rewrite_candidates.py
 """
 
+import argparse
 import json
 import re
+import sys
+
+if __name__ == "__main__" and any(arg in {"-h", "--help"} for arg in sys.argv[1:]):
+    parser = argparse.ArgumentParser(description=(
+        "Read round-3 seed lists, round-4 cases, and docs cases under COMMENT_TOOL_DATA; inspect eligible doc "
+        "comments in the configured repository commits; and ask Jev for review. Writes cases.jsonl, pass.jsonl, "
+        "and the request journal under COMMENT_TOOL_DATA/docs-rewrite/. Prints progress and call counts to "
+        "stdout. Takes no arguments."
+    ))
+    parser.parse_args(["--help"])
 
 from jev_navigator.index.code_index import CodeIndex
 

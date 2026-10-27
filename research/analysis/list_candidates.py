@@ -6,8 +6,14 @@ whether any entry is, or holds, a name.
 usage: uv run python list_candidates.py > <out.jsonl>
 """
 
-import json
 import sys
+
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    import argparse
+
+    argparse.ArgumentParser(description="Read configured local repositories at their round-3 commits; print matching list-claim candidates as JSON lines to stdout.").parse_args()
+
+import json
 
 from jev_navigator.index import tools
 from jev_navigator.index.code_index import CodeIndex

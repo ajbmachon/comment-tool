@@ -7,11 +7,23 @@ the lib sweep asked one stale question, not the three the gate reads, so their a
 usage: python3 gate_replay.py
 """
 
+import argparse
 import json
+import sys
 from collections import Counter
 
 import comment_tool.core.compose as compose
 from comment_tool.config import DATA
+
+
+def _help_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description='Replay the search gate on stored escalations without model calls.', epilog='Reads round4/pass.jsonl from COMMENT_TOOL_DATA; prints replay summaries to stdout.')
+    return parser
+
+
+# Handle help before starting any analysis work.
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    _help_parser().parse_known_args()
 
 STORED = {"round 4": ["round4/pass.jsonl"]}
 

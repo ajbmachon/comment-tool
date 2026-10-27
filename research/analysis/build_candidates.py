@@ -4,9 +4,19 @@ Cases code decides alone (file headers, tool directives, declaration docs, comme
 usage: python3 build_candidates.py cases.jsonl questions.json candidates/
 """
 
+import sys
+
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Read cases.jsonl and questions.json; write candidate JSON files into the output directory.")
+    parser.add_argument("cases", help="input cases.jsonl")
+    parser.add_argument("questions", help="input questions.json")
+    parser.add_argument("output_dir", help="directory for generated candidate JSON files")
+    parser.parse_args()
+
 import json
 import pathlib
-import sys
 
 VALUE_USE = "One of four value answers; their maximum is the comment's usefulness score."
 HARD_USE = "Together with the other half, as their minimum, the explains-hard-code value; never used alone."

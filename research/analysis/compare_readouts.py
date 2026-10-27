@@ -5,11 +5,23 @@ reported so cut-offs can later be fitted on Sol labels and checked on held-out c
 usage: python3 compare_readouts.py
 """
 
+import argparse
 import json
+import sys
 from collections import Counter
 
 from comment_tool.config import DATA
 from research.analysis.compare_labels import A_TO_ACTION, readout_a, rows
+
+
+def _help_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description='Compare Jev readouts with blind Sol labels.', epilog='Reads sol-labels.jsonl, cases.jsonl, and run/*.json from COMMENT_TOOL_DATA; prints agreement summaries to stdout.')
+    return parser
+
+
+# Handle help before starting any analysis work.
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    _help_parser().parse_known_args()
 
 LINK_EQUIVALENT = {("rewrite", "link_owner"), ("link_owner", "rewrite")}
 

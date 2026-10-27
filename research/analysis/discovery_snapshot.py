@@ -6,10 +6,30 @@ usage: uv run python discovery_snapshot.py <repository> <commit> <parent dir> <o
        python3 discovery_snapshot.py --compare <before.jsonl> <after.jsonl>
 """
 
+import argparse
 import json
 import sys
 from collections import Counter
 from pathlib import Path
+
+if __name__ == "__main__" and any(arg in {"-h", "--help"} for arg in sys.argv[1:]):
+    parser = argparse.ArgumentParser(
+        usage="%(prog)s <repository> <commit> <parent dir> <out.jsonl>\n"
+        "       %(prog)s --compare <before.jsonl> <after.jsonl>",
+        description=(
+            "Snapshot comment discovery for a repository commit and parent directory, writing one JSONL row "
+            "per comment to the requested output file. With --compare, read two such JSONL snapshots and "
+            "print route, kind, span and facts differences to stdout. No model calls are made."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("repository", nargs="?", help="repository checkout")
+    parser.add_argument("commit", nargs="?", help="commit to inspect")
+    parser.add_argument("parent_dir", nargs="?", help="directory whose comments are inspected")
+    parser.add_argument("out_jsonl", nargs="?", help="snapshot JSONL output file")
+    parser.add_argument("--compare", nargs=2, metavar=("BEFORE.JSONL", "AFTER.JSONL"),
+                        help="compare two snapshots and print the summary to stdout")
+    parser.parse_args(["--help"])
 
 
 def route_of(found) -> str:

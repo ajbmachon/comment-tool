@@ -5,11 +5,23 @@ boundary, to check that the rule reproduces Sol's chosen action before any Jev a
 usage: python3 compare_labels.py
 """
 
+import argparse
 import json
+import sys
 from collections import Counter
 from pathlib import Path
 
 from comment_tool.config import DATA
+
+
+def _help_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description='Compare blind Sol labels with the proposer draft and composition rule.', epilog='Reads sol-labels.jsonl, sol-labels.v3-questions-partial.jsonl, labels.provisional.json, and cases.jsonl from COMMENT_TOOL_DATA; prints comparisons to stdout.')
+    return parser
+
+
+# Handle help before starting any analysis work.
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    _help_parser().parse_known_args()
 
 VALUE = ("explains_hard_code", "states_hidden_rule", "teaches_needed_knowledge", "points_to_owner")
 A_TO_ACTION = {"stale_fix": "fix_stale", "rename_or_extract": "refactor_instead", "removal": "remove",

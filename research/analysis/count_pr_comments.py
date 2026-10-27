@@ -10,9 +10,17 @@ time per request is read from the stored journals.
 usage: uv run python count_pr_comments.py <repository>=<pr>:<merge commit> ...
 """
 
+import sys
+
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Read local Git repositories and stored Jev journals; print per-PR counts and journal timing as JSON lines to stdout.")
+    parser.add_argument("pull_requests", nargs="*", metavar="<repository>=<pr>:<merge-commit>", help="merged pull request to count")
+    parser.parse_args()
+
 import json
 import statistics
-import sys
 from datetime import datetime
 from pathlib import Path
 

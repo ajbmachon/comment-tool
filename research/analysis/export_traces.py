@@ -7,11 +7,23 @@ why it stopped, and which of the three outcomes it reached. Nothing is recompute
 usage: python3 export_traces.py <sweep dir> <out json> <location> [<location> ...]
 """
 
+import argparse
 import hashlib
 import json
 import sys
 from collections import Counter
 from pathlib import Path
+
+if __name__ == "__main__" and any(arg in {"-h", "--help"} for arg in sys.argv[1:]):
+    parser = argparse.ArgumentParser(description=(
+        "Read stored apps-*.jsonl rows and answers.jsonl from a sweep directory, plus the frozen round-3 "
+        "rule and source files under COMMENT_TOOL_DATA. Write the selected rows' trace JSON to the output "
+        "file and print the stored-rule comparison and trace count to stdout. No model calls are made."
+    ))
+    parser.add_argument("sweep_dir", help="directory containing stored apps-*.jsonl and answers.jsonl")
+    parser.add_argument("out_json", help="trace JSON output file")
+    parser.add_argument("locations", nargs="+", help="row locations to export, such as src/file.py:12")
+    parser.parse_args(["--help"])
 
 from comment_tool.config import DATA
 

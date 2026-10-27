@@ -7,11 +7,23 @@ argument top probability is below it, a Noul on A's decision path sits inside th
 usage: python3 escalate.py
 """
 
+import argparse
 import json
+import sys
 
 from comment_tool.config import DATA
 from research.analysis.compare_labels import rows
 from research.analysis.compare_readouts import jev_answers, matches, readout_a_jev
+
+
+def _help_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description='Score readouts and escalation against blind Sol labels; makes no model calls.', epilog='Reads sol-labels.jsonl, cases.jsonl, and run/*.json from COMMENT_TOOL_DATA; prints escalation summaries to stdout.')
+    return parser
+
+
+# Handle help before starting any analysis work.
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    _help_parser().parse_known_args()
 
 VALUE = ("explains_hard_code", "states_hidden_rule", "teaches_needed_knowledge", "points_to_owner")
 
