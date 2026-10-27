@@ -5,8 +5,14 @@ packets from git objects and compare their JSON bytes with the stored ones.
 usage: uv run python packets_rebuild.py
 """
 
-import json
 import sys
+
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    import argparse
+
+    argparse.ArgumentParser(description="Read the configured round3-nav-described, round4, docs, docs2, and round6 cases.jsonl files; print packet comparisons to stdout.").parse_args()
+
+import json
 from pathlib import Path
 
 from comment_tool.config import DATA

@@ -7,6 +7,16 @@ usage: uv run python docs_count.py <repository> <commit> <parent dir>
 """
 
 import sys
+
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Read a repository at a commit and print doc-comment counts for a parent directory to stdout.")
+    parser.add_argument("repository", help="local Git repository")
+    parser.add_argument("commit", help="commit to inspect")
+    parser.add_argument("parent_dir", help="directory within the repository")
+    parser.parse_args()
+
 from collections import Counter
 from pathlib import Path
 

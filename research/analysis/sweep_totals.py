@@ -4,8 +4,17 @@ which comments two sweeps of the same commit share.
 usage: python3 sweep_totals.py <sweep dir> [--compare <other sweep dir>]
 """
 
-import json
 import sys
+
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Read apps-*.jsonl files from a sweep directory and print totals and search outcomes to stdout.")
+    parser.add_argument("sweep", help="sweep directory")
+    parser.add_argument("--compare", metavar="OTHER", help="also read another sweep directory and compare comment locations")
+    parser.parse_args()
+
+import json
 from collections import Counter
 from pathlib import Path
 
