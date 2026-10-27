@@ -5,6 +5,7 @@ reported so cut-offs can later be fitted on Sol labels and checked on held-out c
 usage: python3 compare_readouts.py
 """
 
+import argparse
 import json
 from collections import Counter
 
@@ -36,7 +37,11 @@ def readout_b_jev(answers: dict) -> tuple[str, str | None, float]:
 def matches(ours: str, sol: str) -> bool:
     return ours == sol or (ours, sol) in LINK_EQUIVALENT
 
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Read Sol labels, cases.jsonl, and run/*.json from COMMENT_TOOL_DATA; print comparisons to stdout.")
+    parser.parse_args()
+
     sol = rows(str(DATA / "sol-labels.jsonl"))
     jev = jev_answers()
     facts = {c["case_id"]: c["code_facts"] for c in map(json.loads, (DATA / "cases.jsonl").read_text().splitlines())}

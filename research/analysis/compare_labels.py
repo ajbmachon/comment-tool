@@ -5,11 +5,10 @@ boundary, to check that the rule reproduces Sol's chosen action before any Jev a
 usage: python3 compare_labels.py
 """
 
+import argparse
 import json
 from collections import Counter
 from pathlib import Path
-
-from comment_tool.config import DATA
 
 VALUE = ("explains_hard_code", "states_hidden_rule", "teaches_needed_knowledge", "points_to_owner")
 A_TO_ACTION = {"stale_fix": "fix_stale", "rename_or_extract": "refactor_instead", "removal": "remove",
@@ -41,6 +40,10 @@ def readout_a(answers: dict, facts: dict) -> str:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Read sol-labels.jsonl, sol-labels.v3-questions-partial.jsonl, labels.provisional.json, and cases.jsonl from COMMENT_TOOL_DATA; print comparisons to stdout.")
+    parser.parse_args()
+    from comment_tool.config import DATA
+
     sol = rows(str(DATA / "sol-labels.jsonl"))
     earlier = rows(str(DATA / "sol-labels.v3-questions-partial.jsonl"))
     draft = json.loads((DATA / "labels.provisional.json").read_text())["labels"]

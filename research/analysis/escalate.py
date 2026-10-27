@@ -7,6 +7,7 @@ argument top probability is below it, a Noul on A's decision path sits inside th
 usage: python3 escalate.py
 """
 
+import argparse
 import json
 
 from comment_tool.config import DATA
@@ -69,6 +70,9 @@ def score(cases, jev, facts, sol, cutoff: float) -> dict:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Read Sol labels, cases.jsonl, and run/*.json from COMMENT_TOOL_DATA; print scores and escalation comparisons to stdout.")
+    parser.parse_args()
+
     sol = rows(str(DATA / "sol-labels.jsonl"))
     jev = jev_answers()
     facts = {c["case_id"]: c["code_facts"] for c in map(json.loads, (DATA / "cases.jsonl").read_text().splitlines())}

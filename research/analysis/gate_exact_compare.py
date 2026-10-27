@@ -7,6 +7,7 @@ exact run asked twice (the journal holds both exchanges); a difference beyond th
 usage: uv run python gate_exact_compare.py
 """
 
+import argparse
 import base64
 import json
 from collections import Counter, defaultdict
@@ -52,6 +53,14 @@ def spread_line(pairs: list[tuple[dict, dict]]) -> str:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=("Compare stored gate-replay and gate-replay-exact answers under the current rule. "
+                     "Reads gated.jsonl from COMMENT_TOOL_DATA/gate-replay and gate-replay-exact, the "
+                     "gate-replay-exact journal.jsonl, and the lib-sweep journal.jsonl and apps-*.jsonl "
+                     "under COMMENT_TOOL_DATA/pass/lib-a3bde2aa-rebuilt; prints verdict and answer-spread "
+                     "counts to stdout.")
+    )
+    parser.parse_args()
     sorted_copy, exact = rows("gate-replay"), rows("gate-replay-exact")
     facts = comment_facts()
     changed, moved, totals, answered = Counter(), Counter(), Counter(), 0

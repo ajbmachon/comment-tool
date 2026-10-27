@@ -8,11 +8,9 @@ one detail when two or more clauses are details. It is mechanical and crude, and
 usage: python3 multi_detail.py
 """
 
+import argparse
 import json
 import re
-
-from comment_tool.config import DATA
-from comment_tool.core.extract_cases import comment_body, comment_prefix
 
 CLAUSE_BREAK = re.compile(r"(?<=[.;:])\s+|\s+[—–-]{1,2}\s+")
 CHECKABLE = re.compile(
@@ -24,11 +22,15 @@ CHECKABLE = re.compile(
 
 
 def detail_clauses(comment: str, path: str) -> list[str]:
+    from comment_tool.core.extract_cases import comment_body, comment_prefix
     body = " ".join(comment_body(comment.split("\n"), comment_prefix(path)))
     return [clause for clause in CLAUSE_BREAK.split(body) if clause.strip() and CHECKABLE.search(clause)]
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Read round4/cases.jsonl from COMMENT_TOOL_DATA; print detail counts to stdout.")
+    parser.parse_args()
+    from comment_tool.config import DATA
     cases = [json.loads(line) for line in (DATA / "round4" / "cases.jsonl").read_text().splitlines()]
     counts = {c["case_id"]: len(detail_clauses(c["state"]["comment"]["text"], c["provenance"]["path"])) for c in cases}
     multi = sorted(cid for cid, n in counts.items() if n >= 2)

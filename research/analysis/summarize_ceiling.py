@@ -7,16 +7,16 @@ where more history stops changing the answer, not whether the answer is right.
 usage: python3 summarize_ceiling.py
 """
 
+import argparse
 import json
-
-from comment_tool.config import DATA
-from research.analysis.ceiling_lib_sweep import searched_more_than_once
 
 YES_AT = 0.8
 
 
 def curves() -> list[dict]:
     """The replayed curves, without comments searched at two locations, whose places were merged."""
+    from comment_tool.config import DATA
+    from research.analysis.ceiling_lib_sweep import searched_more_than_once
     ambiguous = searched_more_than_once()
     rows = [json.loads(line) for line in (DATA / "ceiling" / "curves.jsonl").read_text().splitlines()]
     return [row for row in rows if row["comment"] not in ambiguous]
@@ -33,6 +33,8 @@ def moves_after(curves_: list[dict], size: int) -> list[float]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Read ceiling/curves.jsonl and saved sweep data from COMMENT_TOOL_DATA; print replay summaries to stdout.")
+    parser.parse_args()
     all_curves = curves()
     print(f"{len(all_curves)} searches replayed, {sum(len(c['points']) for c in all_curves)} history sizes asked")
     for c in all_curves:

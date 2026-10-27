@@ -7,6 +7,7 @@ at least two places can show that. The stop question is asked live; nothing else
 usage: uv run python ceiling_lib_sweep.py
 """
 
+import argparse
 import json
 from collections import defaultdict
 
@@ -50,6 +51,13 @@ def history_step(record: dict, commit: str) -> HistoryStep:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=("Replay stored lib-sweep searches by asking Jev the stop question at each history size. "
+                     "Reads stored requests and answers from COMMENT_TOOL_DATA/pass/lib-a3bde2aa-rebuilt "
+                     "and writes curves.jsonl, journal.jsonl and answers.jsonl (including request data) "
+                     "under COMMENT_TOOL_DATA/ceiling.")
+    )
+    parser.parse_args()
     commit = json.loads(next(SWEEP.glob("apps-*.jsonl")).read_text().splitlines()[0])["commit"]
     judge = journaled_judge(OUT, {"heedvane"})
     with (OUT / "curves.jsonl").open("w") as curves:

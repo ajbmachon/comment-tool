@@ -6,8 +6,8 @@ Intended uses for the other questions are taken, by question name, from the roun
 usage: uv run python meta_list_claims.py <out dir>
 """
 
+import argparse
 import json
-import sys
 from pathlib import Path
 
 from jev_navigator.index.code_index import CodeIndex
@@ -31,7 +31,15 @@ ENTRY_USE = ("compose.list_claim reads every entry: any entry at 0.20 or less ma
 
 
 def main() -> None:
-    out = Path(sys.argv[1])
+    parser = argparse.ArgumentParser(
+        description=("Export the stored en-h11 list-claim requests for review. Reads round4/cases.jsonl and "
+                     "meta-round4/candidate.json under COMMENT_TOOL_DATA and reads the analysis-engine Git "
+                     "repository at the commit recorded in the case; writes candidate JSON files to OUT_DIR "
+                     "and prints the number of requests exported to stdout.")
+    )
+    parser.add_argument("out_dir", type=Path, help="directory for candidate-N.json review files")
+    args = parser.parse_args()
+    out = args.out_dir
     raw = next(c for c in map(json.loads, (DATA / "round4/cases.jsonl").read_text().splitlines()) if c["case_id"] == "en-h11")
     client = ScriptedJevClient(nouls={LIST_CLAIM: 0.95}, default_noul=0.05)
     index = CodeIndex.at_commit(ENGINE, raw["provenance"]["commit"], [raw["provenance"]["path"]])
