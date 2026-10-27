@@ -7,9 +7,20 @@ exact run asked twice (the journal holds both exchanges); a difference beyond th
 usage: uv run python gate_exact_compare.py
 """
 
+import argparse
 import base64
 import json
+import sys
 from collections import Counter, defaultdict
+
+if __name__ == "__main__" and any(arg in {"-h", "--help"} for arg in sys.argv[1:]):
+    parser = argparse.ArgumentParser(description=(
+        "Read gated.jsonl from COMMENT_TOOL_DATA/gate-replay/ and gate-replay-exact/, the exact-run journal, "
+        "and lib-sweep rows and journal under COMMENT_TOOL_DATA/pass/lib-a3bde2aa-rebuilt/. Print verdict "
+        "changes, answer movement, and repeat-answer spread to stdout. Reads stored answers only; writes no "
+        "files and makes no model calls. Takes no arguments."
+    ))
+    parser.parse_args(["--help"])
 
 import comment_tool.core.compose as compose
 from comment_tool.config import DATA

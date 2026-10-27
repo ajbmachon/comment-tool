@@ -14,10 +14,20 @@ calling agent instead, right and wrong.
 usage: python3 per_band.py
 """
 
+import argparse
 import json
 import sys
 from collections import defaultdict
 from pathlib import Path
+
+if __name__ == "__main__" and any(arg in {"-h", "--help"} for arg in sys.argv[1:]):
+    parser = argparse.ArgumentParser(description=(
+        "Read stored cases, pass rows, labels and run answers from COMMENT_TOOL_DATA/round3/, round3-nav-described/, "
+        "round4/, round4-definitions-elsewhere/, docs/ and docs2/, including the frozen round-3 rule. Print "
+        "accuracy by confidence band and stale-verdict summaries to stdout. Writes no files and makes no model "
+        "calls. Takes no arguments."
+    ))
+    parser.parse_args(["--help"])
 
 import comment_tool.core.compose as compose
 from comment_tool.config import DATA

@@ -6,9 +6,20 @@ Intended uses for the other questions are taken, by question name, from the roun
 usage: uv run python meta_list_claims.py <out dir>
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
+
+if __name__ == "__main__" and any(arg in {"-h", "--help"} for arg in sys.argv[1:]):
+    parser = argparse.ArgumentParser(description=(
+        "Read the en-h11 round-4 case and meta-round4 candidate under COMMENT_TOOL_DATA and repository "
+        "source at the recorded commit. Run the review questions with a scripted client, write "
+        "candidate-0.json and candidate-1.json under OUT_DIR, and print the request count to stdout. "
+        "No model calls are made."
+    ))
+    parser.add_argument("out_dir", help="directory for the exported review candidate JSON files")
+    parser.parse_args(["--help"])
 
 from jev_navigator.index.code_index import CodeIndex
 from jev_navigator.judgments.judge import Judge

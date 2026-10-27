@@ -7,8 +7,19 @@ at least two places can show that. The stop question is asked live; nothing else
 usage: uv run python ceiling_lib_sweep.py
 """
 
+import argparse
 import json
+import sys
 from collections import defaultdict
+
+if __name__ == "__main__" and any(arg in {"-h", "--help"} for arg in sys.argv[1:]):
+    parser = argparse.ArgumentParser(description=(
+        "Read stored lib-sweep searches from COMMENT_TOOL_DATA/pass/lib-a3bde2aa-rebuilt/ "
+        "and ask the stop question live as each search's opened history grows. "
+        "Writes curves.jsonl and the live request journal under COMMENT_TOOL_DATA/ceiling/. "
+        "Prints the number of live calls to stdout."
+    ))
+    parser.parse_args(["--help"])
 
 from jev_navigator.history import FetchedSpan, HistoryStep, ceiling_curve
 
