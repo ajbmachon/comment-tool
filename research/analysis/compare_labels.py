@@ -5,6 +5,15 @@ boundary, to check that the rule reproduces Sol's chosen action before any Jev a
 usage: python3 compare_labels.py
 """
 
+if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(description=(
+        "Compare stored Sol labels with draft labels and the readout rule. Reads sol-labels.jsonl, "
+        "sol-labels.v3-questions-partial.jsonl, labels.provisional.json and cases.jsonl from "
+        "COMMENT_TOOL_DATA; prints agreement summaries to stdout."
+    )).parse_known_args()
+
 import json
 from collections import Counter
 from pathlib import Path

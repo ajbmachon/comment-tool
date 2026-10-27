@@ -7,6 +7,14 @@ the lib sweep asked one stale question, not the three the gate reads, so their a
 usage: python3 gate_replay.py
 """
 
+if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(description=(
+        "Replay the search gate on the stored round-4 pass. Reads round4/pass.jsonl from "
+        "COMMENT_TOOL_DATA; prints replay counts and decisions to stdout. Makes no model calls."
+    )).parse_known_args()
+
 import json
 from collections import Counter
 
