@@ -6,6 +6,17 @@ usage: uv run python discovery_snapshot.py <repository> <commit> <parent dir> <o
        python3 discovery_snapshot.py --compare <before.jsonl> <after.jsonl>
 """
 
+if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(
+        usage=("%(prog)s <repository> <commit> <parent dir> <out.jsonl>\n"
+               "       %(prog)s --compare <before.jsonl> <after.jsonl>"),
+        description=("Snapshot mode reads a repository at a commit and parent directory, then writes "
+                     "comment locations, routes, kinds, and facts to a JSONL file. Compare mode reads "
+                     "two snapshot JSONL files and prints their differences to stdout."),
+    ).parse_known_args()
+
 import json
 import sys
 from collections import Counter

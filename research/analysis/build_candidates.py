@@ -8,6 +8,22 @@ import json
 import pathlib
 import sys
 
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Read cases.jsonl and questions.json; write one candidate JSON file per eligible case "
+            "into the output directory."
+        )
+    )
+    parser.add_argument("cases", help="input cases.jsonl")
+    parser.add_argument("questions", help="input questions.json")
+    parser.add_argument(
+        "out_dir", help="directory for candidate JSON files"
+    )
+    parser.parse_args()
+
 VALUE_USE = "One of four value answers; their maximum is the comment's usefulness score."
 HARD_USE = "Together with the other half, as their minimum, the explains-hard-code value; never used alone."
 INTENDED_USES = {

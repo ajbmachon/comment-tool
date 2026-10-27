@@ -9,6 +9,17 @@ usage: uv run python list_candidates.py > <out.jsonl>
 import json
 import sys
 
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Read configured round-3 repository commits and source files; "
+            "print matching list-comment candidates as JSONL to stdout."
+        )
+    )
+    parser.parse_args()
+
 from jev_navigator.index import tools
 from jev_navigator.index.code_index import CodeIndex
 

@@ -5,6 +5,14 @@ reported so cut-offs can later be fitted on Sol labels and checked on held-out c
 usage: python3 compare_readouts.py
 """
 
+if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(description=(
+        "Compare stored Jev readouts with Sol labels. Reads run/*.json, sol-labels.jsonl and "
+        "cases.jsonl from COMMENT_TOOL_DATA; prints agreement summaries to stdout."
+    )).parse_known_args()
+
 import json
 from collections import Counter
 

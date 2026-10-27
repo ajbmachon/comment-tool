@@ -7,6 +7,15 @@ where more history stops changing the answer, not whether the answer is right.
 usage: python3 summarize_ceiling.py
 """
 
+if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(description=(
+        "Summarize stored replayed search-history curves. Reads ceiling/curves.jsonl and the "
+        "library sweep data from COMMENT_TOOL_DATA; prints curves and summary statistics to "
+        "stdout. Makes no model calls."
+    )).parse_known_args()
+
 import json
 
 from comment_tool.config import DATA

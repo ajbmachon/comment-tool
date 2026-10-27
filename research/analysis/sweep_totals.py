@@ -9,6 +9,26 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Read sweep unit JSONL files; print action totals, search outcomes, "
+            "and optionally shared locations to stdout."
+        )
+    )
+    parser.add_argument(
+        "sweep",
+        help="sweep directory containing apps-*.jsonl files",
+    )
+    parser.add_argument(
+        "--compare",
+        metavar="OTHER_SWEEP",
+        help="also compare locations with another sweep directory",
+    )
+    parser.parse_args()
+
 ACTIONS = ("keep", "rewrite", "remove", "refactor_instead", "fix_stale", "escalate")
 REVIEWED_KINDS = ("block",)
 """Whole-line comments not attached to a declaration: the population the reference labels cover."""

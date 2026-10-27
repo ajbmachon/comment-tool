@@ -7,6 +7,15 @@ argument top probability is below it, a Noul on A's decision path sits inside th
 usage: python3 escalate.py
 """
 
+if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(description=(
+        "Score stored readouts and escalation rules against Sol labels. Reads run/*.json, "
+        "sol-labels.jsonl and cases.jsonl from COMMENT_TOOL_DATA; prints scores and escalations "
+        "to stdout. Makes no model calls."
+    )).parse_known_args()
+
 import json
 
 from comment_tool.config import DATA

@@ -8,6 +8,14 @@ one detail when two or more clauses are details. It is mechanical and crude, and
 usage: python3 multi_detail.py
 """
 
+if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(description=(
+        "Count checkable detail clauses in stored round-4 comments. Reads round4/cases.jsonl "
+        "from COMMENT_TOOL_DATA; prints the count and per-case JSON to stdout."
+    )).parse_known_args()
+
 import json
 import re
 

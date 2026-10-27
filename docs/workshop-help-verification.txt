@@ -1,0 +1,40 @@
+Workshop argparse help verification — 27 October 2026
+
+Project: /Users/andremachon/Projects/codex-demo
+Branch: demo/codex-workshop
+Reviewed base: 13fe35db8cb2c7de9167aeaf1f901e64fc290a65
+Verified implementation: ae15d2cc008e06a76bae2a20d7fc3b57df7c2f18
+
+Four separate local sidebar chats (no subagents):
+help-low: gpt-6-luna, low, batch A (six scripts)
+  01a17d68-c876-71d0-8154-94e84fed5d95
+help-medium: gpt-6-luna, medium, batch B (six scripts)
+  01a17d68-cbc1-7e91-80a9-1eabada249d1
+help-max: gpt-6-luna, max, batch C (seven scripts)
+  01a17d68-d2b5-7a40-99b5-9eb147a2619e
+verify: gpt-6-sol, xhigh, started after all three batch reports
+  01a17d6a-7b6b-7353-8bff-f95c26f32a3b
+Coordinator: 01a17d68-3d81-7d82-84b0-99e77d17b63d
+
+The implementation and subprocess regression tests were already committed
+when these chats started. The three batch chats inspected their assigned
+files, reported successful help checks, and made no further source edits.
+help-low sent its guarded early-help pattern directly to help-max;
+help-max confirmed directly back to help-low.
+
+Verifier results:
+- Runbook empty-COMMENT_TOOL_DATA subprocess loop: all 19 scripts printed
+  usage and exited 0.
+- uv run pytest: exit 0; 148 passed in 14.51 seconds.
+- git diff --check: exit 0.
+- git diff --check 13fe35db8cb2c7de9167aeaf1f901e64fc290a65...HEAD: exit 0.
+- No introduced defect found in help placement, input/output descriptions,
+  original invocation forms, or guarded import behavior.
+
+Regression proof used only a temporary copy of the base sweep_totals.py:
+the existing subprocess test failed for both help variants with the original
+IndexError; ordinary and --compare output fixtures passed on the same base.
+The current help tests pass with default and empty research data.
+
+Scope limits: normal research jobs and model APIs were not executed.
+Full-suite success uses this prepared machine and its existing local fixtures.

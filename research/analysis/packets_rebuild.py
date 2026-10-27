@@ -9,6 +9,16 @@ import json
 import sys
 from pathlib import Path
 
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    import argparse
+
+    argparse.ArgumentParser(
+        description=(
+            "Read labelled cases.jsonl files under COMMENT_TOOL_DATA and source Git objects; "
+            "print packet rebuild comparisons to stdout and exit nonzero if any differ."
+        )
+    ).parse_args()
+
 from comment_tool.config import DATA
 from comment_tool.core.comment_review import MEASURED_CONTEXT, comment_state
 from research.rounds.run_round4 import case_of, index_of

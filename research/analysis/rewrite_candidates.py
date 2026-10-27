@@ -7,6 +7,16 @@ the engine at the round-3 commit. Every exchange is journaled.
 usage: uv run python rewrite_candidates.py
 """
 
+if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(
+        description=("Reads stored docs and round-4 samples under COMMENT_TOOL_DATA plus source files at "
+                     "the configured Heedvane and analysis-engine commits; asks Jev about candidate doc "
+                     "comments, writes cases.jsonl and pass.jsonl with request journals under "
+                     "COMMENT_TOOL_DATA/docs-rewrite, and prints counts.")
+    ).parse_known_args()
+
 import json
 import re
 

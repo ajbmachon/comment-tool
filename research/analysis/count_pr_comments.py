@@ -16,6 +16,23 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+if __name__ == "__main__" and any(arg in ("-h", "--help") for arg in sys.argv[1:]):
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Read repository Git history and stored Jev journals under COMMENT_TOOL_DATA; "
+            "print per-PR comment counts and request timing JSON to stdout."
+        )
+    )
+    parser.add_argument(
+        "pull_requests",
+        nargs="+",
+        metavar="<repository>=<pr>:<merge commit>",
+        help="repository name (resolved under ~/Projects), pull request number, and merge commit",
+    )
+    parser.parse_args()
+
 from jev_navigator.index.code_index import CodeIndex
 
 from comment_tool.claims.list_claims import list_claim_for
